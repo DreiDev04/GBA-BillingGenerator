@@ -1,0 +1,71 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.venv/
+ENV/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+coverage.*
+.cache
+nosetests.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PDF output / temp files
+*.pdf
+*.log
+*.tmp
+*.temp
+*.bak
+~$*
+
+# OS-specific
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE/editor folders
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# PyInstaller / packaging
+dist/
+build/
+*.spec
+
+# CustomTkinter cache (if any)
+*.tcl
+*.db
+
+# VS Code Python settings
+.settings.json
+.mypy_cache/
+.pyre/
+
+# Backup and temp files
+*.swp
+*.swo
+*~
+
+# Optional: compiled UI preview images
+*.png
+*.jpg
+*.jpeg
