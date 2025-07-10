@@ -154,7 +154,7 @@ def create_billing_form(master):
             "header": entry_header.get(),
             "footer": entry_footer.get(),
             "body_message": entry_body.get("1.0", "end").strip(),
-            "company_contact": entry_contact.get(),
+            "company_contact": entry_contact.get("1.0", "end").strip(),
             "receiver": entry_receiver.get(),
             "position": entry_position.get()
         }
@@ -203,11 +203,10 @@ def create_billing_form(master):
     entry_body.pack(fill="x", padx=10, pady=(0, 5))
 
     # Company Contact
-    entry_contact = ctk.CTkEntry(
+    entry_contact = ctk.CTkTextbox(
         config_frame,
-        placeholder_text="Company Contact (optional)",
+        height=60,
         font=("Segoe UI", 12),
-        height=32,
         corner_radius=8
     )
     entry_contact.pack(fill="x", padx=10, pady=(0, 5))
@@ -261,11 +260,12 @@ def create_billing_form(master):
     
     entry_date = ctk.CTkEntry(
         client_grid, 
-        placeholder_text=datetime.now().strftime("%m-%d-%Y"),
+        placeholder_text="MM-DD-YYYY",
         font=("Segoe UI", 12),
         height=38,
         corner_radius=8
     )
+    entry_date.insert(0, datetime.now().strftime("%m-%d-%Y"))
     entry_date.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
     create_error_label(client_frame, "client_date").pack(fill="x", padx=10, pady=(0, 5))
     
@@ -508,7 +508,7 @@ def create_billing_form(master):
                 "header": entry_header.get(),
                 "footer": entry_footer.get(),
                 "body_message": entry_body.get("1.0", "end").strip(),
-                "company_contact": entry_contact.get()
+                "company_contact": entry_contact.get("1.0", "end").strip()
             }
             save_config()  # Save config on PDF generation as well
             data["items"] = []
@@ -581,7 +581,7 @@ def create_billing_form(master):
     if config_data.get("body_message"):
         entry_body.insert("1.0", config_data.get("body_message"))
     if config_data.get("company_contact"):
-        entry_contact.insert(0, config_data.get("company_contact"))
+        entry_contact.insert("1.0", config_data.get("company_contact"))
     if config_data.get("receiver"):
         entry_receiver.insert(0, config_data.get("receiver"))
     if config_data.get("position"):

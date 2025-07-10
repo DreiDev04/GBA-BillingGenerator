@@ -6,68 +6,78 @@ from reportlab.lib import colors
 from reportlab.lib.units import inch
 import tempfile
 import os
+from reportlab.lib.enums import TA_LEFT
 
 # Add your PDF generation functions here. Example:
 def generate_invoice_pdf(data, filename):
-
     c = canvas.Canvas(filename, pagesize=legal)
     width, height = legal
+    margin_x = 1 * inch
+    y = height - 1.2 * inch  # Top margin
+    c.setFont("Helvetica", 12)
+    c.setFillColorRGB(0, 0, 0)
 
-    # --- Modern Header Bar ---
-    header_color = colors.HexColor("#2D3E50")
-    c.setFillColor(header_color)
-    c.rect(0, height - 1.1 * inch, width, 1.1 * inch, fill=1, stroke=0)
-    c.setFillColor(colors.white)
-    c.setFont("Helvetica-Bold", 22)
-    c.drawString(1 * inch, height - 0.65 * inch, data.get("header", "BILLING STATEMENT"))
-    # Logo placeholder (optional):
-    # c.drawImage('logo.png', width - 2*inch, height - 1*inch, width=1*inch, height=1*inch, mask='auto')
+    # Name, Date, Re
+    c.drawString(margin_x, y, f"Name: {data.get('client_name', '')}")
+    y -= 0.32 * inch
 
-    # --- Company/Contact Info ---
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.HexColor("#222222"))
-    c.drawString(1 * inch, height - 1.35 * inch, data.get("receiver", ""))
-    if data.get("position"):
-        c.drawString(1 * inch, height - 1.55 * inch, data["position"])
-    if data.get("company_contact"):
-        c.drawString(1 * inch, height - 1.75 * inch, data["company_contact"])
+    # Format date as 'Month Day, Year' (e.g., July 10, 2025)
+    import datetime
+    raw_date = data.get('date', '')
+    formatted_date = raw_date
+    try:
+        # Try MM-DD-YYYY
+        dt = datetime.datetime.strptime(raw_date, '%m-%d-%Y')
+        formatted_date = dt.strftime('%B %d, %Y')
+    except Exception:
+        try:
+            # Try YYYY-MM-DD
+            dt = datetime.datetime.strptime(raw_date, '%Y-%m-%d')
+            formatted_date = dt.strftime('%B %d, %Y')
+        except Exception:
+            pass
+    c.drawString(margin_x, y, f"Date: {formatted_date}")
+    y -= 0.32 * inch
+    c.drawString(margin_x, y, f"Re: {data.get('service', '')}")
+    y -= 0.45 * inch
 
-    # --- Invoice Details (right side) ---
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.white)
-    c.drawRightString(width - 1 * inch, height - 0.65 * inch, f"Date: {data.get('date', '')}")
-    c.drawRightString(width - 1 * inch, height - 0.95 * inch, f"Status: {data.get('status', '').upper()}")
+    # Divider
+    c.setStrokeColorRGB(0.8, 0.8, 0.8)
+    c.setLineWidth(0.7)
+    c.line(margin_x, y, width - margin_x, y)
+    y -= 0.4 * inch
 
-    # --- Client Info ---
-    y = height - 2.2 * inch
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.HexColor("#2D3E50"))
-    c.drawString(1 * inch, y, "Bill To:")
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.HexColor("#222222"))
-    c.drawString(1 * inch, y - 0.2 * inch, data.get("client_name", ""))
-
-    # --- Service Description ---
-    c.setFont("Helvetica-Bold", 12)
-    c.setFillColor(colors.HexColor("#2D3E50"))
-    c.drawString(1 * inch, y - 0.5 * inch, "Service:")
-    c.setFont("Helvetica", 10)
-    c.setFillColor(colors.HexColor("#222222"))
-    c.drawString(1 * inch, y - 0.7 * inch, data.get("service", ""))
-
-    # --- Body Message (if any) ---
+    # Body Message
     if data.get("body_message"):
-        from reportlab.platypus import Paragraph
+        from reportlab.platypus import Paragraph, Frame
         from reportlab.lib.styles import ParagraphStyle
-        from reportlab.platypus import Frame
-        body_style = ParagraphStyle(
-            'Body', fontName="Helvetica", fontSize=10, leading=14, textColor=colors.HexColor("#444444"), spaceAfter=8
-        )
+        from reportlab.lib import colors
+        body_style = ParagraphStyle('Body', fontName="Helvetica", fontSize=12, leading=18, textColor=colors.black)
         body = Paragraph(data["body_message"].replace("\n", "<br/>"), body_style)
-        body_frame = Frame(1 * inch, y - 2.1 * inch, width - 2 * inch, 0.7 * inch, showBoundary=0)
+        body_height = 1.5 * inch
+        body_frame = Frame(margin_x, y - body_height, width - 2 * margin_x, body_height, showBoundary=0)
         body_frame.addFromList([body], c)
+        y -= body_height + 0.2 * inch
+    else:
+        y -= 0.2 * inch
 
-    # --- Items Table ---
+    # Divider
+    c.setStrokeColorRGB(0.8, 0.8, 0.8)
+    c.setLineWidth(0.7)
+    c.line(margin_x, y, width - margin_x, y)
+    y -= 0.5 * inch
+
+    # BILLING STATEMENT title (centered, bold, underlined)
+    c.setFont("Helvetica-Bold", 18)
+    title = "BILLING STATEMENT"
+    title_width = c.stringWidth(title, "Helvetica-Bold", 18)
+    c.drawString((width - title_width) / 2, y, title)
+    c.setLineWidth(1.2)
+    c.setStrokeColorRGB(0, 0, 0)
+    c.line((width - title_width) / 2, y - 3, (width + title_width) / 2, y - 3)
+    y -= 0.5 * inch
+
+    # Table
     table_data = [["Description", "Qty", "Unit Price", "Amount"]]
     for item in data.get("items", []):
         try:
@@ -77,53 +87,92 @@ def generate_invoice_pdf(data, filename):
             table_data.append([
                 item.get("description", ""),
                 item.get("qty", ""),
-                f"PHP {amount_val:,.2f}",
-                f"PHP {total:,.2f}"
+                f"PHP {int(amount_val):,}",
+                f"PHP {int(total):,}"
             ])
         except ValueError:
             pass
-
-    # Add subtotal row
-    subtotal = data.get("subtotal", "PHP 0.00")
+    subtotal = data.get("subtotal", "PHP 0")
+    if isinstance(subtotal, str) and "." in subtotal:
+        subtotal = subtotal.split(".")[0]
     table_data.append(["", "", "Subtotal:", subtotal])
 
-    table = Table(table_data, colWidths=[3.5*inch, 0.8*inch, 1*inch, 1.3*inch])
+    # Calculate responsive column widths based on available width
+    available_width = width - 2 * margin_x
+    desc_col = 0.36 * available_width
+    qty_col = 0.13 * available_width
+    unit_col = 0.25 * available_width
+    amt_col = 0.26 * available_width
+
+    # Wrap long description text before creating the Table
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_LEFT
+    desc_style = ParagraphStyle('desc', fontName="Helvetica", fontSize=11, leading=13, alignment=TA_LEFT)
+    for i in range(1, len(table_data)):
+        desc = table_data[i][0]
+        if isinstance(desc, str) and len(desc) > 40:
+            table_data[i][0] = Paragraph(desc, desc_style)
+    table = Table(table_data, colWidths=[desc_col, qty_col, unit_col, amt_col])
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#4B8DF8")),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
-        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-        ('ALIGN', (2, 1), (3, -1), 'RIGHT'),  # Ensure right alignment for currency columns
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -2), colors.white),
-        ('TEXTCOLOR', (0, 1), (-1, -2), colors.HexColor("#222222")),
-        ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -2), 10),
-        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor("#E0E0E0")),
-        ('FONTNAME', (0, -1), (-2, -1), 'Helvetica-Bold'),
-        ('BACKGROUND', (0, -1), (-2, -1), colors.HexColor("#F5F5F5")),
-        ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor("#2D3E50")),
-        ('FONTSIZE', (0, -1), (-1, -1), 11),
-        ('LINEABOVE', (0, -1), (-1, -1), 1, colors.HexColor("#4B8DF8")),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('FONTSIZE', (0, 1), (-1, -1), 11),
+        ('GRID', (0, 0), (-1, -1), 0.5, (0.7,0.7,0.7)),
+        ('BACKGROUND', (0, 0), (-1, 0), (0.95, 0.95, 0.95)),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
+
+    table_height = (len(table_data) + 1) * 0.32 * inch
     table.wrapOn(c, width, height)
-    table.drawOn(c, 1 * inch, y - 2.5 * inch)
+    table.drawOn(c, margin_x, y - table_height)
+    y -= table_height + 0.5 * inch
 
-    # --- Attorney (Prepared by) ---
+    # Divider
+    c.setStrokeColorRGB(0.8, 0.8, 0.8)
+    c.setLineWidth(0.7)
+    c.line(margin_x, y, width - margin_x, y)
+    y -= 0.4 * inch
+
+    # Company Contact (centered, bold, with space)
+    if data.get("company_contact"):
+        from reportlab.platypus import Paragraph, Frame
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib import colors
+        contact_style = ParagraphStyle('Contact', fontName="Helvetica-Bold", fontSize=12, leading=16, alignment=1, textColor=colors.black)  # 1=center
+        contact = Paragraph(data["company_contact"].replace("\n", "<br/>"), contact_style)
+        contact_height = max(0.8 * inch, 0.25 * inch * (data["company_contact"].count("\n") + 1))
+        contact_frame = Frame(margin_x, y - contact_height, width - 2 * margin_x, contact_height, showBoundary=0)
+        contact_frame.addFromList([contact], c)
+        y -= contact_height + 0.5 * inch  # Extra space after
+
+    # Prepared By (left-aligned, not bold)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(margin_x, y, "Prepared By:")
+    y -= 0.28 * inch
+    c.setFont("Helvetica", 12)
+    receiver = data.get("receiver", "")
+    if receiver:
+        c.drawString(margin_x, y, receiver)
+        y -= 0.28 * inch
+    position = data.get("position")
+    if position:
+        c.drawString(margin_x, y, position)
+        y -= 0.28 * inch
+
+    # Noted By (left-aligned, not bold)
     if data.get("attorney"):
-        c.setFont("Helvetica", 10)
-        c.setFillColor(colors.HexColor("#2D3E50"))
-        c.drawString(1 * inch, 0.85 * inch, f"Prepared by: {data['attorney']}")
-
-    # --- Footer ---
-    c.setStrokeColor(colors.HexColor("#E0E0E0"))
-    c.setLineWidth(0.5)
-    c.line(0.5 * inch, 0.7 * inch, width - 0.5 * inch, 0.7 * inch)
-    c.setFont("Helvetica", 9)
-    c.setFillColor(colors.HexColor("#888888"))
-    footer_text = data.get("footer", "Thank you for your business!")
-    c.drawCentredString(width / 2, 0.5 * inch, footer_text)
+        y -= 0.18 * inch
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(margin_x, y, "Noted By:")
+        y -= 0.28 * inch
+        c.setFont("Helvetica", 12)
+        c.drawString(margin_x, y, data["attorney"])
 
     c.save()
