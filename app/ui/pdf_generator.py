@@ -77,22 +77,23 @@ def generate_invoice_pdf(data, filename):
             table_data.append([
                 item.get("description", ""),
                 item.get("qty", ""),
-                f"₱{amount_val:,.2f}",
-                f"₱{total:,.2f}"
+                f"PHP {amount_val:,.2f}",
+                f"PHP {total:,.2f}"
             ])
         except ValueError:
             pass
 
     # Add subtotal row
-    subtotal = data.get("subtotal", "₱0.00")
+    subtotal = data.get("subtotal", "PHP 0.00")
     table_data.append(["", "", "Subtotal:", subtotal])
 
-    table = Table(table_data, colWidths=[3.5*inch, 0.8*inch, 1*inch, 1*inch])
+    table = Table(table_data, colWidths=[3.5*inch, 0.8*inch, 1*inch, 1.3*inch])
     table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#4B8DF8")),
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('ALIGN', (0, 0), (0, -1), 'LEFT'),
         ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('ALIGN', (2, 1), (3, -1), 'RIGHT'),  # Ensure right alignment for currency columns
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 11),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),

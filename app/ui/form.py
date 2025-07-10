@@ -1,4 +1,3 @@
-
 import customtkinter as ctk
 from datetime import datetime
 import tempfile
@@ -59,7 +58,7 @@ def create_billing_form(master):
             show_error("client_name", "Invalid client name")
         
         if not validate_date(entry_date.get()):
-            show_error("client_date", "Invalid date format (YYYY-MM-DD)")
+            show_error("client_date", "Invalid date format (MM-DD-YYYY or YYYY-MM-DD)")
         
         if not validate_required(entry_service.get()):
             show_error("service", "Service description is required")
@@ -69,19 +68,16 @@ def create_billing_form(master):
         
         # Validate billing items
         valid_items = []
-        for i, child in enumerate(items_frame.winfo_children()):
-            if isinstance(child, ctk.CTkFrame) and hasattr(child, 'is_item_frame'):
-                desc = child.desc_entry.get()
-                qty = child.qty_entry.get()
-                amount = child.amount_entry.get()
-                
-                if desc:  # Only validate if description exists
-                    if not validate_quantity(qty):
-                        show_error(f"item_qty_{i}", "Quantity must be positive number")
-                    if not validate_currency(amount):
-                        show_error(f"item_amount_{i}", "Invalid amount")
-                    valid_items.append(True)
-        
+        for i, row in enumerate(item_rows):
+            desc = row['desc_entry'].get()
+            qty = row['qty_entry'].get()
+            amount = row['amount_entry'].get()
+            if desc:  # Only validate if description exists
+                if not validate_quantity(qty):
+                    show_error(f"item_qty_{i}", "Quantity must be positive number")
+                if not validate_currency(amount):
+                    show_error(f"item_amount_{i}", "Invalid amount")
+                valid_items.append(True)
         if not any(valid_items):
             show_error("items", "At least one valid billing item is required")
         
@@ -186,7 +182,6 @@ def create_billing_form(master):
         corner_radius=8
     )
     entry_header.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="ew")
-    entry_header.insert(0, config_data.get("header", ""))
 
     # Footer
     entry_footer = ctk.CTkEntry(
@@ -197,7 +192,6 @@ def create_billing_form(master):
         corner_radius=8
     )
     entry_footer.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
-    entry_footer.insert(0, config_data.get("footer", ""))
 
     # Body Message
     entry_body = ctk.CTkTextbox(
@@ -207,7 +201,6 @@ def create_billing_form(master):
         corner_radius=8
     )
     entry_body.pack(fill="x", padx=10, pady=(0, 5))
-    entry_body.insert("1.0", config_data.get("body_message", ""))
 
     # Company Contact
     entry_contact = ctk.CTkEntry(
@@ -218,7 +211,6 @@ def create_billing_form(master):
         corner_radius=8
     )
     entry_contact.pack(fill="x", padx=10, pady=(0, 5))
-    entry_contact.insert(0, config_data.get("company_contact", ""))
 
     # --- Your Information Section (Persistent) ---
     personal_frame = create_section(scroll_frame, "YOUR INFORMATION")
@@ -231,8 +223,6 @@ def create_billing_form(master):
         corner_radius=8
     )
     entry_receiver.pack(fill="x", padx=10, pady=(0, 0))
-    entry_receiver.insert(0, config_data.get("receiver", ""))
-    create_error_label(personal_frame, "receiver").pack(fill="x", padx=10, pady=(0, 10))
 
     entry_position = ctk.CTkEntry(
         personal_frame, 
@@ -242,7 +232,6 @@ def create_billing_form(master):
         corner_radius=8
     )
     entry_position.pack(fill="x", padx=10, pady=(0, 5))
-    entry_position.insert(0, config_data.get("position", ""))
 
     # Save config on change
     def on_config_change(event=None):
@@ -272,7 +261,7 @@ def create_billing_form(master):
     
     entry_date = ctk.CTkEntry(
         client_grid, 
-        placeholder_text=datetime.now().strftime("%Y-%m-%d"),
+        placeholder_text=datetime.now().strftime("%m-%d-%Y"),
         font=("Segoe UI", 12),
         height=38,
         corner_radius=8
@@ -314,18 +303,17 @@ def create_billing_form(master):
     items_frame = ctk.CTkFrame(billing_frame, fg_color="transparent")
     items_frame.pack(fill="x", padx=10, pady=5)
     
-    # Function to add new item row
+    # Store item rows as a list of dicts
+    item_rows = []
+
     def add_item_row(description="", qty="1", amount=""):
         item_frame = ctk.CTkFrame(items_frame, fg_color="transparent")
         item_frame.pack(fill="x", pady=2)
-        item_frame.is_item_frame = True
-        
         item_frame.columnconfigure(0, weight=3)
         item_frame.columnconfigure(1, weight=1)
         item_frame.columnconfigure(2, weight=1)
         item_frame.columnconfigure(3, weight=0)
-        
-        # Description entry
+
         entry_desc = ctk.CTkEntry(
             item_frame, 
             placeholder_text="Item description",
@@ -335,9 +323,7 @@ def create_billing_form(master):
         )
         entry_desc.grid(row=0, column=0, padx=(0, 5), sticky="ew")
         entry_desc.insert(0, description)
-        item_frame.desc_entry = entry_desc
-        
-        # Quantity entry
+
         entry_qty = ctk.CTkEntry(
             item_frame, 
             placeholder_text="Qty",
@@ -350,9 +336,7 @@ def create_billing_form(master):
         )
         entry_qty.grid(row=0, column=1, padx=5, sticky="e")
         entry_qty.insert(0, qty)
-        item_frame.qty_entry = entry_qty
-        
-        # Amount entry
+
         entry_amount = ctk.CTkEntry(
             item_frame, 
             placeholder_text="0.00",
@@ -365,13 +349,16 @@ def create_billing_form(master):
         )
         entry_amount.grid(row=0, column=2, padx=(5, 0), sticky="e")
         entry_amount.insert(0, amount)
-        item_frame.amount_entry = entry_amount
-        
-        # Remove button
+
         def remove_item():
             item_frame.destroy()
+            # Remove from item_rows
+            for i, row in enumerate(item_rows):
+                if row['frame'] == item_frame:
+                    item_rows.pop(i)
+                    break
             update_totals()
-        
+
         remove_btn = ctk.CTkButton(
             item_frame,
             text="×",
@@ -385,8 +372,7 @@ def create_billing_form(master):
             command=remove_item
         )
         remove_btn.grid(row=0, column=3, padx=(5, 0))
-        
-        # Error label for the row
+
         row_error = ctk.CTkLabel(
             item_frame,
             text="",
@@ -395,14 +381,21 @@ def create_billing_form(master):
             anchor="w"
         )
         row_error.grid(row=1, column=0, columnspan=4, sticky="w", pady=(0, 2))
-        
-        # Bind calculations to quantity/amount changes
+
         def calculate_total(*args):
             update_totals()
-        
+
         entry_qty.bind("<KeyRelease>", calculate_total)
         entry_amount.bind("<KeyRelease>", calculate_total)
-        
+
+        # Store references in item_rows
+        item_rows.append({
+            'frame': item_frame,
+            'desc_entry': entry_desc,
+            'qty_entry': entry_qty,
+            'amount_entry': entry_amount,
+            'error_label': row_error
+        })
         return item_frame
     
     # Add initial item row
@@ -439,7 +432,7 @@ def create_billing_form(master):
     
     subtotal_value = ctk.CTkLabel(
         totals_frame,
-        text="₱0.00",
+        text="PHP 0.00",
         font=("Segoe UI Semibold", 11),
         anchor="e"
     )
@@ -448,68 +441,17 @@ def create_billing_form(master):
     # Function to update totals
     def update_totals():
         subtotal = 0.0
-        for child in items_frame.winfo_children():
-            if isinstance(child, ctk.CTkFrame) and hasattr(child, 'is_item_frame'):
-                qty_entry = child.qty_entry
-                amount_entry = child.amount_entry
-                
-                try:
-                    qty = float(qty_entry.get() or 0)
-                    amount = float(amount_entry.get() or 0)
-                    subtotal += qty * amount
-                except ValueError:
-                    pass
-        
-        subtotal_value.configure(text=f"₱{subtotal:,.2f}")
+        for row in item_rows:
+            qty_entry = row['qty_entry']
+            amount_entry = row['amount_entry']
+            try:
+                qty = float(qty_entry.get() or 0)
+                amount = float(amount_entry.get() or 0)
+                subtotal += qty * amount
+            except ValueError:
+                pass
+        subtotal_value.configure(text=f"PHP {subtotal:,.2f}")
     
-
-    # Configuration Section
-    config_frame = create_section(scroll_frame, "CONFIGURATION")
-
-    config_grid = ctk.CTkFrame(config_frame, fg_color="transparent")
-    config_grid.pack(fill="x", padx=10, pady=5)
-    config_grid.columnconfigure(0, weight=1)
-    config_grid.columnconfigure(1, weight=1)
-
-    # Header
-    entry_header = ctk.CTkEntry(
-        config_grid,
-        placeholder_text="Header (optional)",
-        font=("Segoe UI", 12),
-        height=32,
-        corner_radius=8
-    )
-    entry_header.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="ew")
-
-    # Footer
-    entry_footer = ctk.CTkEntry(
-        config_grid,
-        placeholder_text="Footer (optional)",
-        font=("Segoe UI", 12),
-        height=32,
-        corner_radius=8
-    )
-    entry_footer.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
-
-    # Body Message
-    entry_body = ctk.CTkTextbox(
-        config_frame,
-        height=60,
-        font=("Segoe UI", 12),
-        corner_radius=8
-    )
-    entry_body.pack(fill="x", padx=10, pady=(0, 5))
-    entry_body.insert("1.0", "Message body (optional)")
-
-    # Company Contact
-    entry_contact = ctk.CTkEntry(
-        config_frame,
-        placeholder_text="Company Contact (optional)",
-        font=("Segoe UI", 12),
-        height=32,
-        corner_radius=8
-    )
-    entry_contact.pack(fill="x", padx=10, pady=(0, 5))
 
     # Payment Information Section
     payment_frame = create_section(scroll_frame, "PAYMENT INFORMATION")
@@ -569,17 +511,17 @@ def create_billing_form(master):
                 "company_contact": entry_contact.get()
             }
             save_config()  # Save config on PDF generation as well
-            for child in items_frame.winfo_children():
-                if isinstance(child, ctk.CTkFrame) and hasattr(child, 'is_item_frame'):
-                    desc = child.desc_entry.get()
-                    qty = child.qty_entry.get()
-                    amount = child.amount_entry.get()
-                    if desc:
-                        data["items"].append({
-                            "description": desc,
-                            "qty": qty,
-                            "amount": amount
-                        })
+            data["items"] = []
+            for row in item_rows:
+                desc = row['desc_entry'].get()
+                qty = row['qty_entry'].get()
+                amount = row['amount_entry'].get()
+                if desc:
+                    data["items"].append({
+                        "description": desc,
+                        "qty": qty,
+                        "amount": amount
+                    })
             generate_invoice_pdf(data, filepath)
             return filepath
         except Exception as e:
@@ -631,4 +573,18 @@ def create_billing_form(master):
     )
     btn_generate.pack(side="right", fill="x", expand=True)
     
+    # Only insert default values if config_data has a value, otherwise leave empty for placeholder
+    if config_data.get("header"):
+        entry_header.insert(0, config_data.get("header"))
+    if config_data.get("footer"):
+        entry_footer.insert(0, config_data.get("footer"))
+    if config_data.get("body_message"):
+        entry_body.insert("1.0", config_data.get("body_message"))
+    if config_data.get("company_contact"):
+        entry_contact.insert(0, config_data.get("company_contact"))
+    if config_data.get("receiver"):
+        entry_receiver.insert(0, config_data.get("receiver"))
+    if config_data.get("position"):
+        entry_position.insert(0, config_data.get("position"))
+
     return main_frame

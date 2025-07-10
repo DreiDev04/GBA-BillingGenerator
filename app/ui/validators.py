@@ -24,7 +24,11 @@ def validate_quantity(text):
 def validate_date(text):
     try:
         if text:
-            datetime.strptime(text, "%Y-%m-%d")
+            # Accept both MM-DD-YYYY and YYYY-MM-DD
+            try:
+                datetime.strptime(text, "%m-%d-%Y")
+            except ValueError:
+                datetime.strptime(text, "%Y-%m-%d")
         return True
     except ValueError:
         return False
