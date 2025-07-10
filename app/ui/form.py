@@ -140,7 +140,7 @@ def create_billing_form(master):
         return error_label
     
 
-    # --- Persistent Configuration Section (above everything) ---
+    # --- Configuration Section (Persistent) ---
     import json
     CONFIG_PATH = os.path.expanduser("~/.gba_billing_config.json")
 
@@ -170,16 +170,16 @@ def create_billing_form(master):
 
     config_data = load_config()
 
-    persistent_config_frame = create_section(scroll_frame, "CONFIGURATION (Persistent)")
+    config_frame = create_section(scroll_frame, "CONFIGURATION (PERSISTENT)")
 
-    persistent_grid = ctk.CTkFrame(persistent_config_frame, fg_color="transparent")
-    persistent_grid.pack(fill="x", padx=10, pady=5)
-    persistent_grid.columnconfigure(0, weight=1)
-    persistent_grid.columnconfigure(1, weight=1)
+    config_grid = ctk.CTkFrame(config_frame, fg_color="transparent")
+    config_grid.pack(fill="x", padx=10, pady=5)
+    config_grid.columnconfigure(0, weight=1)
+    config_grid.columnconfigure(1, weight=1)
 
     # Header
     entry_header = ctk.CTkEntry(
-        persistent_grid,
+        config_grid,
         placeholder_text="Header (optional)",
         font=("Segoe UI", 12),
         height=32,
@@ -190,7 +190,7 @@ def create_billing_form(master):
 
     # Footer
     entry_footer = ctk.CTkEntry(
-        persistent_grid,
+        config_grid,
         placeholder_text="Footer (optional)",
         font=("Segoe UI", 12),
         height=32,
@@ -201,7 +201,7 @@ def create_billing_form(master):
 
     # Body Message
     entry_body = ctk.CTkTextbox(
-        persistent_config_frame,
+        config_frame,
         height=60,
         font=("Segoe UI", 12),
         corner_radius=8
@@ -211,7 +211,7 @@ def create_billing_form(master):
 
     # Company Contact
     entry_contact = ctk.CTkEntry(
-        persistent_config_frame,
+        config_frame,
         placeholder_text="Company Contact (optional)",
         font=("Segoe UI", 12),
         height=32,
@@ -220,11 +220,11 @@ def create_billing_form(master):
     entry_contact.pack(fill="x", padx=10, pady=(0, 5))
     entry_contact.insert(0, config_data.get("company_contact", ""))
 
-    # Your Information Section (below persistent config)
+    # --- Your Information Section (Persistent) ---
     personal_frame = create_section(scroll_frame, "YOUR INFORMATION")
 
     entry_receiver = ctk.CTkEntry(
-        personal_frame,
+        personal_frame, 
         placeholder_text="Your Name / Company*",
         font=("Segoe UI", 12),
         height=38,
@@ -235,7 +235,7 @@ def create_billing_form(master):
     create_error_label(personal_frame, "receiver").pack(fill="x", padx=10, pady=(0, 10))
 
     entry_position = ctk.CTkEntry(
-        personal_frame,
+        personal_frame, 
         placeholder_text="Position / Title",
         font=("Segoe UI", 12),
         height=38,
@@ -463,99 +463,53 @@ def create_billing_form(master):
         subtotal_value.configure(text=f"₱{subtotal:,.2f}")
     
 
+    # Configuration Section
+    config_frame = create_section(scroll_frame, "CONFIGURATION")
 
-    # --- Invoice Generator Section (below configuration and your info) ---
-    invoice_gen_frame = create_section(scroll_frame, "INVOICE GENERATOR")
-    # Move all the following sections into invoice_gen_frame
-    # Client Information Section
-    client_frame = create_section(invoice_gen_frame, "CLIENT INFORMATION")
-    client_grid = ctk.CTkFrame(client_frame, fg_color="transparent")
-    client_grid.pack(fill="x", padx=10, pady=5)
-    client_grid.columnconfigure(0, weight=1)
-    client_grid.columnconfigure(1, weight=1)
+    config_grid = ctk.CTkFrame(config_frame, fg_color="transparent")
+    config_grid.pack(fill="x", padx=10, pady=5)
+    config_grid.columnconfigure(0, weight=1)
+    config_grid.columnconfigure(1, weight=1)
 
-    entry_name = ctk.CTkEntry(
-        client_grid, 
-        placeholder_text="Client Name*",
+    # Header
+    entry_header = ctk.CTkEntry(
+        config_grid,
+        placeholder_text="Header (optional)",
         font=("Segoe UI", 12),
-        height=38,
+        height=32,
         corner_radius=8
     )
-    entry_name.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="ew")
-    create_error_label(client_frame, "client_name").pack(fill="x", padx=10, pady=(0, 5))
+    entry_header.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="ew")
 
-    entry_date = ctk.CTkEntry(
-        client_grid, 
-        placeholder_text=datetime.now().strftime("%Y-%m-%d"),
+    # Footer
+    entry_footer = ctk.CTkEntry(
+        config_grid,
+        placeholder_text="Footer (optional)",
         font=("Segoe UI", 12),
-        height=38,
+        height=32,
         corner_radius=8
     )
-    entry_date.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
-    create_error_label(client_frame, "client_date").pack(fill="x", padx=10, pady=(0, 5))
+    entry_footer.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
 
-    # Service Details Section
-    service_frame = create_section(invoice_gen_frame, "SERVICE DETAILS")
-    entry_service = ctk.CTkEntry(
-        service_frame,
-        placeholder_text="Service Description*",
+    # Body Message
+    entry_body = ctk.CTkTextbox(
+        config_frame,
+        height=60,
         font=("Segoe UI", 12),
-        height=38,
         corner_radius=8
     )
-    entry_service.pack(fill="x", padx=10, pady=(0, 0))
-    create_error_label(service_frame, "service").pack(fill="x", padx=10, pady=(0, 5))
+    entry_body.pack(fill="x", padx=10, pady=(0, 5))
+    entry_body.insert("1.0", "Message body (optional)")
 
-    # Billing Statement Section
-    billing_frame = create_section(invoice_gen_frame, "BILLING STATEMENT")
-    create_error_label(billing_frame, "items").pack(fill="x", padx=10, pady=(0, 5))
-
-    # Items table header
-    header_grid = ctk.CTkFrame(billing_frame, fg_color="transparent")
-    header_grid.pack(fill="x", padx=10, pady=(0, 5))
-    header_grid.columnconfigure(0, weight=3)
-    header_grid.columnconfigure(1, weight=1)
-    header_grid.columnconfigure(2, weight=1)
-    header_grid.columnconfigure(3, weight=0)
-
-    ctk.CTkLabel(header_grid, text="Description", font=("Segoe UI Semibold", 11)).grid(row=0, column=0, sticky="w")
-    ctk.CTkLabel(header_grid, text="Qty", font=("Segoe UI Semibold", 11)).grid(row=0, column=1, sticky="e")
-    ctk.CTkLabel(header_grid, text="Amount", font=("Segoe UI Semibold", 11)).grid(row=0, column=2, sticky="e")
-    ctk.CTkLabel(header_grid, text="", width=40).grid(row=0, column=3)
-
-    # Items list
-    items_frame = ctk.CTkFrame(billing_frame, fg_color="transparent")
-    items_frame.pack(fill="x", padx=10, pady=5)
-
-    # ...existing code for add_item_row, add_item_btn, totals_frame, update_totals...
-
-    # Payment Information Section
-    payment_frame = create_section(invoice_gen_frame, "PAYMENT INFORMATION")
-
-    status_var = ctk.StringVar(value="pending")
-    status_dropdown = ctk.CTkComboBox(
-        payment_frame,
-        values=["pending", "paid", "overdue"],
-        variable=status_var,
+    # Company Contact
+    entry_contact = ctk.CTkEntry(
+        config_frame,
+        placeholder_text="Company Contact (optional)",
         font=("Segoe UI", 12),
-        height=38,
+        height=32,
         corner_radius=8
     )
-    status_dropdown.pack(fill="x", padx=10, pady=5)
-
-    # Attorney Information
-    attorney_frame = create_section(invoice_gen_frame, "ATTORNEY INFORMATION")
-    entry_attorney = ctk.CTkEntry(
-        attorney_frame, 
-        placeholder_text="Attorney Name",
-        font=("Segoe UI", 12),
-        height=38,
-        corner_radius=8
-    )
-    entry_attorney.pack(fill="x", padx=10, pady=(0, 0))
-    create_error_label(attorney_frame, "attorney").pack(fill="x", padx=10, pady=(0, 5))
-
-    # ...existing code for PDF generation, preview, and action buttons...
+    entry_contact.pack(fill="x", padx=10, pady=(0, 5))
 
     # Payment Information Section
     payment_frame = create_section(scroll_frame, "PAYMENT INFORMATION")
@@ -614,6 +568,7 @@ def create_billing_form(master):
                 "body_message": entry_body.get("1.0", "end").strip(),
                 "company_contact": entry_contact.get()
             }
+            save_config()  # Save config on PDF generation as well
             for child in items_frame.winfo_children():
                 if isinstance(child, ctk.CTkFrame) and hasattr(child, 'is_item_frame'):
                     desc = child.desc_entry.get()
