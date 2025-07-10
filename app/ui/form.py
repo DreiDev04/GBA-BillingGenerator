@@ -371,9 +371,58 @@ def create_billing_form(master):
         
         subtotal_value.configure(text=f"₱{subtotal:,.2f}")
     
+
+    # Configuration Section
+    config_frame = create_section(scroll_frame, "CONFIGURATION")
+
+    config_grid = ctk.CTkFrame(config_frame, fg_color="transparent")
+    config_grid.pack(fill="x", padx=10, pady=5)
+    config_grid.columnconfigure(0, weight=1)
+    config_grid.columnconfigure(1, weight=1)
+
+    # Header
+    entry_header = ctk.CTkEntry(
+        config_grid,
+        placeholder_text="Header (optional)",
+        font=("Segoe UI", 12),
+        height=32,
+        corner_radius=8
+    )
+    entry_header.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="ew")
+
+    # Footer
+    entry_footer = ctk.CTkEntry(
+        config_grid,
+        placeholder_text="Footer (optional)",
+        font=("Segoe UI", 12),
+        height=32,
+        corner_radius=8
+    )
+    entry_footer.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
+
+    # Body Message
+    entry_body = ctk.CTkTextbox(
+        config_frame,
+        height=60,
+        font=("Segoe UI", 12),
+        corner_radius=8
+    )
+    entry_body.pack(fill="x", padx=10, pady=(0, 5))
+    entry_body.insert("1.0", "Message body (optional)")
+
+    # Company Contact
+    entry_contact = ctk.CTkEntry(
+        config_frame,
+        placeholder_text="Company Contact (optional)",
+        font=("Segoe UI", 12),
+        height=32,
+        corner_radius=8
+    )
+    entry_contact.pack(fill="x", padx=10, pady=(0, 5))
+
     # Payment Information Section
     payment_frame = create_section(scroll_frame, "PAYMENT INFORMATION")
-    
+
     status_var = ctk.StringVar(value="pending")
     status_dropdown = ctk.CTkComboBox(
         payment_frame,
@@ -422,7 +471,11 @@ def create_billing_form(master):
                 "status": status_var.get(),
                 "attorney": entry_attorney.get(),
                 "subtotal": subtotal_value.cget("text"),
-                "items": []
+                "items": [],
+                "header": entry_header.get(),
+                "footer": entry_footer.get(),
+                "body_message": entry_body.get("1.0", "end").strip(),
+                "company_contact": entry_contact.get()
             }
             for child in items_frame.winfo_children():
                 if isinstance(child, ctk.CTkFrame) and hasattr(child, 'is_item_frame'):
