@@ -1,17 +1,18 @@
+
 import customtkinter as ctk
 from datetime import datetime
-import re
 import tempfile
 import os
-from reportlab.lib.pagesizes import legal, letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import Paragraph, Table, TableStyle
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
 import webbrowser
+from tkinter import filedialog, messagebox
+from app.ui.validators import (
+    validate_required,
+    validate_currency,
+    validate_quantity,
+    validate_date,
+    validate_name
+)
+from app.ui.pdf_generator import generate_invoice_pdf
 
 def create_billing_form(master):
     # Modern theme configuration
@@ -26,37 +27,7 @@ def create_billing_form(master):
     scroll_frame = ctk.CTkScrollableFrame(main_frame)
     scroll_frame.pack(fill="both", expand=True)
     
-    # Validation functions
-    def validate_required(text):
-        return len(text.strip()) > 0
-    
-    def validate_currency(text):
-        try:
-            if text:
-                float(text)
-            return True
-        except ValueError:
-            return False
-    
-    def validate_quantity(text):
-        try:
-            if text:
-                qty = float(text)
-                return qty > 0
-            return True
-        except ValueError:
-            return False
-    
-    def validate_date(text):
-        try:
-            if text:
-                datetime.strptime(text, "%Y-%m-%d")
-            return True
-        except ValueError:
-            return False
-    
-    def validate_name(text):
-        return bool(re.match(r"^[a-zA-Z\s\-\.']+$", text)) if text else True
+    # Validation functions are now imported from validators.py
     
     # Store validation references
     validation_errors = {}
@@ -432,7 +403,6 @@ def create_billing_form(master):
         if not validate_form():
             messagebox.showerror("Validation Error", "Please fix all errors before generating PDF")
             return None
-        
         if not filepath:
             filepath = filedialog.asksaveasfilename(
                 defaultextension=".pdf",
@@ -441,106 +411,31 @@ def create_billing_form(master):
             )
             if not filepath:
                 return None
-        
         try:
-            # Create PDF
-            c = canvas.Canvas(filepath, pagesize=legal)
-            width, height = legal
-            
-            # Styles
-            styles = getSampleStyleSheet()
-            title_style = styles["Title"]
-            heading_style = styles["Heading2"]
-            normal_style = styles["Normal"]
-            bold_style = ParagraphStyle(
-                "Bold",
-                parent=normal_style,
-                fontName="Helvetica-Bold"
-            )
-            
-            # Invoice Header
-            c.setFont("Helvetica-Bold", 16)
-            c.drawString(1 * inch, height - 1 * inch, "BILLING STATEMENT")
-            
-            # Company Info
-            c.setFont("Helvetica", 10)
-            c.drawString(1 * inch, height - 1.5 * inch, entry_receiver.get())
-            if entry_position.get():
-                c.drawString(1 * inch, height - 1.7 * inch, entry_position.get())
-            
-            # Invoice Details
-            c.setFont("Helvetica", 10)
-            c.drawRightString(width - 1 * inch, height - 1 * inch, f"Invoice Date: {entry_date.get()}")
-            c.drawRightString(width - 1 * inch, height - 1.2 * inch, f"Status: {status_var.get().upper()}")
-            
-            # Client Info
-            c.setFont("Helvetica-Bold", 12)
-            c.drawString(1 * inch, height - 2.2 * inch, "Bill To:")
-            c.setFont("Helvetica", 10)
-            c.drawString(1 * inch, height - 2.4 * inch, entry_name.get())
-            
-            # Service Description
-            c.setFont("Helvetica-Bold", 12)
-            c.drawString(1 * inch, height - 2.8 * inch, "Service:")
-            c.setFont("Helvetica", 10)
-            c.drawString(1 * inch, height - 3.0 * inch, entry_service.get())
-            
-            # Items Table
-            data = [["Description", "Qty", "Unit Price", "Amount"]]
-            
+            # Gather data for PDF
+            data = {
+                "receiver": entry_receiver.get(),
+                "position": entry_position.get(),
+                "client_name": entry_name.get(),
+                "date": entry_date.get(),
+                "service": entry_service.get(),
+                "status": status_var.get(),
+                "attorney": entry_attorney.get(),
+                "subtotal": subtotal_value.cget("text"),
+                "items": []
+            }
             for child in items_frame.winfo_children():
                 if isinstance(child, ctk.CTkFrame) and hasattr(child, 'is_item_frame'):
                     desc = child.desc_entry.get()
                     qty = child.qty_entry.get()
                     amount = child.amount_entry.get()
-                    
                     if desc:
-                        try:
-                            qty_val = float(qty or 0)
-                            amount_val = float(amount or 0)
-                            total = qty_val * amount_val
-                            data.append([
-                                desc,
-                                qty,
-                                f"₱{amount_val:,.2f}",
-                                f"₱{total:,.2f}"
-                            ])
-                        except ValueError:
-                            pass
-            
-            # Add subtotal row
-            subtotal = subtotal_value.cget("text")
-            data.append(["", "", "Subtotal:", subtotal])
-            
-            # Create table
-            table = Table(data, colWidths=[3.5*inch, 0.8*inch, 1*inch, 1*inch])
-            table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#4B8DF8")),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 1), (-1, -2), colors.white),
-                ('GRID', (0, 0), (-1, -1), 1, colors.HexColor("#DDDDDD")),
-                ('FONTNAME', (0, -1), (-2, -1), 'Helvetica-Bold'),
-                ('BACKGROUND', (0, -1), (-2, -1), colors.HexColor("#F5F5F5")),
-            ]))
-            
-            # Draw table
-            table.wrapOn(c, width, height)
-            table.drawOn(c, 1 * inch, height - 5 * inch)
-            
-            # Footer
-            if entry_attorney.get():
-                c.setFont("Helvetica", 10)
-                c.drawString(1 * inch, 0.5 * inch, f"Prepared by: {entry_attorney.get()}")
-            
-            c.setFont("Helvetica", 8)
-            c.drawCentredString(width / 2, 0.25 * inch, "Thank you for your business!")
-            
-            c.save()
+                        data["items"].append({
+                            "description": desc,
+                            "qty": qty,
+                            "amount": amount
+                        })
+            generate_invoice_pdf(data, filepath)
             return filepath
         except Exception as e:
             messagebox.showerror("PDF Error", f"Failed to generate PDF: {str(e)}")
