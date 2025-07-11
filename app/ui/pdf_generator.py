@@ -38,8 +38,8 @@ def generate_invoice_pdf(data, filename):
             header_text = header_text[:1500] + "<br/><b>...(truncated)</b>" if len(header_text) > 1500 else header_text
             header = Paragraph(header_text, header_style)
             w, h = header.wrap(width - 2 * margin_x, max_header_height)
-        top_margin = height - 1 * inch
-        header_y = top_margin - h
+        # Draw header at the very top of the page (like DOCX)
+        header_y = height - h - 0.4 * inch
         header.drawOn(c, margin_x, header_y)
         y = header_y - 0.2 * inch
         header_height_used = h + 0.2 * inch
@@ -215,7 +215,7 @@ def generate_invoice_pdf(data, filename):
         from reportlab.lib import colors
         max_footer_height = height / 3
         min_font_size = 8
-        font_size = 11
+        font_size = 8
         leading = 15
         footer_text = data["footer"].replace("\n", "<br/>")
         while font_size >= min_font_size:
@@ -230,9 +230,9 @@ def generate_invoice_pdf(data, filename):
             footer_text = footer_text[:1500] + "<br/><b>...(truncated)</b>" if len(footer_text) > 1500 else footer_text
             footer = Paragraph(footer_text, footer_style)
             w, h = footer.wrap(width - 2 * margin_x, max_footer_height)
-        bottom_margin = 0.7 * inch
-        footer_y = bottom_margin
+        # Draw footer at the very bottom of the page (like DOCX)
+        footer_y = 0.2 * inch
         footer.drawOn(c, margin_x, footer_y)
-        footer_height_used = h + bottom_margin
+        footer_height_used = h + footer_y
 
     c.save()
