@@ -15,17 +15,34 @@ def generate_invoice_pdf(data, filename):
     margin_x = 1 * inch
     y = height - 1 * inch  # Top margin (for header)
 
-    # Header (as document header, always at the very top)
+    # Header (dynamic height, up to 1/3 page, always starts at top margin)
+    header_height_used = 0
     if data.get("header"):
-        from reportlab.platypus import Paragraph, Frame
+        from reportlab.platypus import Paragraph
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib import colors
-        header_style = ParagraphStyle('Header', fontName="Helvetica-Bold", fontSize=14, leading=18, alignment=1, textColor=colors.black)  # Centered
-        header = Paragraph(data["header"].replace("\n", "<br/>"), header_style)
-        header_height = max(0.7 * inch, 0.22 * inch * (data["header"].count("\n") + 1))
-        header_frame = Frame(margin_x, height - header_height - 0.5 * inch, width - 2 * margin_x, header_height, showBoundary=0)
-        header_frame.addFromList([header], c)
-        y = height - header_height - 0.7 * inch
+        max_header_height = height / 3
+        min_font_size = 8
+        font_size = 14
+        leading = 18
+        header_text = data["header"].replace("\n", "<br/>")
+        while font_size >= min_font_size:
+            header_style = ParagraphStyle('Header', fontName="Helvetica-Bold", fontSize=font_size, leading=leading, alignment=1, textColor=colors.black)
+            header = Paragraph(header_text, header_style)
+            w, h = header.wrap(width - 2 * margin_x, max_header_height)
+            if h <= max_header_height:
+                break
+            font_size -= 2
+            leading = max(leading - 2, font_size + 2)
+        else:
+            header_text = header_text[:1500] + "<br/><b>...(truncated)</b>" if len(header_text) > 1500 else header_text
+            header = Paragraph(header_text, header_style)
+            w, h = header.wrap(width - 2 * margin_x, max_header_height)
+        top_margin = height - 1 * inch
+        header_y = top_margin - h
+        header.drawOn(c, margin_x, header_y)
+        y = header_y - 0.2 * inch
+        header_height_used = h + 0.2 * inch
     c.setFont("Helvetica", 12)
     c.setFillColorRGB(0, 0, 0)
 
@@ -190,15 +207,32 @@ def generate_invoice_pdf(data, filename):
         c.drawString(margin_x, y, data["attorney"])
 
 
-    # Footer (as paragraph, at the bottom)
+    # Footer (dynamic height, up to 1/3 page, always starts at bottom margin)
+    footer_height_used = 0
     if data.get("footer"):
-        from reportlab.platypus import Paragraph, Frame
+        from reportlab.platypus import Paragraph
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib import colors
-        footer_style = ParagraphStyle('Footer', fontName="Helvetica", fontSize=11, leading=15, alignment=1, textColor=colors.grey)
-        footer = Paragraph(data["footer"].replace("\n", "<br/>"), footer_style)
-        footer_height = max(0.5 * inch, 0.18 * inch * (data["footer"].count("\n") + 1))
-        footer_frame = Frame(margin_x, 0.7 * inch, width - 2 * margin_x, footer_height, showBoundary=0)
-        footer_frame.addFromList([footer], c)
+        max_footer_height = height / 3
+        min_font_size = 8
+        font_size = 11
+        leading = 15
+        footer_text = data["footer"].replace("\n", "<br/>")
+        while font_size >= min_font_size:
+            footer_style = ParagraphStyle('Footer', fontName="Helvetica", fontSize=font_size, leading=leading, alignment=1, textColor=colors.grey)
+            footer = Paragraph(footer_text, footer_style)
+            w, h = footer.wrap(width - 2 * margin_x, max_footer_height)
+            if h <= max_footer_height:
+                break
+            font_size -= 2
+            leading = max(leading - 2, font_size + 2)
+        else:
+            footer_text = footer_text[:1500] + "<br/><b>...(truncated)</b>" if len(footer_text) > 1500 else footer_text
+            footer = Paragraph(footer_text, footer_style)
+            w, h = footer.wrap(width - 2 * margin_x, max_footer_height)
+        bottom_margin = 0.7 * inch
+        footer_y = bottom_margin
+        footer.drawOn(c, margin_x, footer_y)
+        footer_height_used = h + bottom_margin
 
     c.save()
