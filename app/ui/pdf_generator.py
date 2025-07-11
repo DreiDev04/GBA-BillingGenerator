@@ -13,12 +13,9 @@ def generate_invoice_pdf(data, filename):
     c = canvas.Canvas(filename, pagesize=legal)
     width, height = legal
     margin_x = 1 * inch
-    y = height - 1.2 * inch  # Top margin
-    c.setFont("Helvetica", 12)
-    c.setFillColorRGB(0, 0, 0)
+    y = height - 1 * inch  # Top margin (for header)
 
-
-    # Header (as paragraph)
+    # Header (as document header, always at the very top)
     if data.get("header"):
         from reportlab.platypus import Paragraph, Frame
         from reportlab.lib.styles import ParagraphStyle
@@ -26,9 +23,13 @@ def generate_invoice_pdf(data, filename):
         header_style = ParagraphStyle('Header', fontName="Helvetica-Bold", fontSize=14, leading=18, alignment=1, textColor=colors.black)  # Centered
         header = Paragraph(data["header"].replace("\n", "<br/>"), header_style)
         header_height = max(0.7 * inch, 0.22 * inch * (data["header"].count("\n") + 1))
-        header_frame = Frame(margin_x, y - header_height, width - 2 * margin_x, header_height, showBoundary=0)
+        header_frame = Frame(margin_x, height - header_height - 0.5 * inch, width - 2 * margin_x, header_height, showBoundary=0)
         header_frame.addFromList([header], c)
-        y -= header_height + 0.18 * inch
+        y = height - header_height - 0.7 * inch
+    c.setFont("Helvetica", 12)
+    c.setFillColorRGB(0, 0, 0)
+
+
 
     # Name, Date, Re
     c.drawString(margin_x, y, f"Name: {data.get('client_name', '')}")
