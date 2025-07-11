@@ -147,8 +147,8 @@ def create_billing_form(master):
 
     def save_config():
         config = {
-            "header": entry_header.get(),
-            "footer": entry_footer.get(),
+            "header": entry_header.get("1.0", "end").strip(),
+            "footer": entry_footer.get("1.0", "end").strip(),
             "body_message": entry_body.get("1.0", "end").strip(),
             "company_contact": entry_contact.get("1.0", "end").strip(),
             "receiver": entry_receiver.get(),
@@ -573,9 +573,9 @@ def create_billing_form(master):
     
     # Only insert default values if config_data has a value, otherwise leave empty for placeholder
     if config_data.get("header"):
-        entry_header.insert(0, config_data.get("header"))
+        entry_header.insert("1.0", config_data.get("header"))
     if config_data.get("footer"):
-        entry_footer.insert(0, config_data.get("footer"))
+        entry_footer.insert("1.0", config_data.get("footer"))
     if config_data.get("body_message"):
         entry_body.insert("1.0", config_data.get("body_message"))
     if config_data.get("company_contact"):
