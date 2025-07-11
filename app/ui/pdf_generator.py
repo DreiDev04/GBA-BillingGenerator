@@ -54,37 +54,52 @@ def generate_invoice_pdf(data, filename):
             c.drawString(width - logo_margin_right - logo_max_width, height - logo_margin_top - 10, "[Logo not found]")
             c.setFillColorRGB(0, 0, 0)
 
-    # Header (dynamic height, up to 1/3 page, always starts at top margin)
+    # Header (first line bold, next lines as subheader)
     header_height_used = 0
     if data.get("header"):
         from reportlab.platypus import Paragraph
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib import colors
         max_header_height = height / 3
-        min_font_size = 8
-        font_size = 14
-        leading = 18
-        header_text = data["header"].replace("\n", "<br/>")
+        # Split header into lines
+        header_lines = data["header"].split("\n")
+        first_line = header_lines[0] if len(header_lines) > 0 else ""
+        second_line = header_lines[1] if len(header_lines) > 1 else ""
+        third_line = header_lines[2] if len(header_lines) > 2 else ""
         # Reserve space for logo on the right
         right_margin_for_logo = logo_max_width + logo_margin_right + 0.2 * inch
         available_header_width = width - margin_x - right_margin_for_logo
-        while font_size >= min_font_size:
-            header_style = ParagraphStyle('Header', fontName="Helvetica-Bold", fontSize=font_size, leading=leading, alignment=0, textColor=colors.black)  # align left
-            header = Paragraph(header_text, header_style)
-            w, h = header.wrap(available_header_width, max_header_height)
-            if h <= max_header_height:
-                break
-            font_size -= 2
-            leading = max(leading - 2, font_size + 2)
-        else:
-            header_text = header_text[:1500] + "<br/><b>...(truncated)</b>" if len(header_text) > 1500 else header_text
-            header = Paragraph(header_text, header_style)
-            w, h = header.wrap(available_header_width, max_header_height)
-        # Draw header at the very top of the page (like DOCX), left-aligned
-        header_y = height - h - 0.4 * inch
-        header.drawOn(c, margin_x, header_y)
-        y = header_y - 0.2 * inch
-        header_height_used = h + 0.2 * inch
+        # Styles
+        first_style = ParagraphStyle('HeaderBold', fontName="Helvetica-Bold", fontSize=16, leading=20, alignment=0, textColor=colors.black)
+        sub_style = ParagraphStyle('HeaderSub', fontName="Helvetica", fontSize=11, leading=14, alignment=0, textColor=colors.black)
+        # Paragraphs
+        para_first = Paragraph(first_line, first_style)
+        para_second = Paragraph(second_line, sub_style) if second_line else None
+        para_third = Paragraph(third_line, sub_style) if third_line else None
+        # Calculate heights
+        w1, h1 = para_first.wrap(available_header_width, max_header_height)
+        h_total = h1
+        w2 = w3 = 0
+        h2 = h3 = 0
+        if para_second:
+            w2, h2 = para_second.wrap(available_header_width, max_header_height - h_total)
+            h_total += h2
+        if para_third:
+            w3, h3 = para_third.wrap(available_header_width, max_header_height - h_total)
+            h_total += h3
+        # Draw header lines
+        header_y = height - h_total - 0.4 * inch
+        y_cursor = header_y + h_total
+        para_first.drawOn(c, margin_x, y_cursor - h1)
+        y_cursor -= h1
+        if para_second:
+            para_second.drawOn(c, margin_x, y_cursor - h2)
+            y_cursor -= h2
+        if para_third:
+            para_third.drawOn(c, margin_x, y_cursor - h3)
+            y_cursor -= h3
+        y = header_y - 0.8 * inch  # Increased space after header
+        header_height_used = h_total + 0.4 * inch
     c.setFont("Helvetica", 12)
     c.setFillColorRGB(0, 0, 0)
 
