@@ -134,7 +134,13 @@ def create_billing_form(master):
 
     # --- Configuration Section (Persistent) ---
     import json
-    CONFIG_PATH = os.path.expanduser("~/.gba_billing_config.json")
+    import sys
+    if getattr(sys, 'frozen', False):
+        # Running as bundled EXE
+        BASE_DIR = os.path.dirname(sys.executable)
+    else:
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    CONFIG_PATH = os.path.join(BASE_DIR, "gba_billing_config.json")
 
     def load_config():
         if os.path.exists(CONFIG_PATH):
@@ -153,7 +159,8 @@ def create_billing_form(master):
             "company_contact": entry_contact.get("1.0", "end").strip(),
             "receiver": entry_receiver.get(),
             "position": entry_position.get(),
-            "attorney": entry_attorney.get()
+            "attorney": entry_attorney.get(),
+            "logo_path": entry_logo_path.get()
         }
         try:
             with open(CONFIG_PATH, "w") as f:
@@ -163,13 +170,13 @@ def create_billing_form(master):
 
     config_data = load_config()
 
+
     config_frame = create_section(scroll_frame, "CONFIGURATION")
 
     config_grid = ctk.CTkFrame(config_frame, fg_color="transparent")
     config_grid.pack(fill="x", padx=15, pady=15)
     config_grid.columnconfigure(0, weight=1)
     config_grid.columnconfigure(1, weight=1)
-
 
     # Header (as paragraph)
     entry_header = ctk.CTkTextbox(
@@ -190,6 +197,21 @@ def create_billing_form(master):
     )
     entry_footer.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
     entry_footer.insert("1.0", "")
+
+    # Logo path (file picker)
+    logo_frame = ctk.CTkFrame(config_frame, fg_color="transparent")
+    logo_frame.pack(fill="x", padx=15, pady=(0, 10))
+    ctk.CTkLabel(logo_frame, text="Logo (top right, persistent):", font=("Segoe UI", 12)).pack(side="left", padx=(0, 10))
+    entry_logo_path = ctk.CTkEntry(logo_frame, width=320, font=("Segoe UI", 12), corner_radius=8)
+    entry_logo_path.pack(side="left", fill="x", expand=True)
+    def pick_logo_file():
+        path = filedialog.askopenfilename(title="Select Logo Image", filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")])
+        if path:
+            entry_logo_path.delete(0, "end")
+            entry_logo_path.insert(0, path)
+            save_config()
+    btn_logo_browse = ctk.CTkButton(logo_frame, text="Browse", command=pick_logo_file, width=80)
+    btn_logo_browse.pack(side="left", padx=(10, 0))
 
     # Body Message
     entry_body = ctk.CTkTextbox(
@@ -234,7 +256,7 @@ def create_billing_form(master):
     def on_config_change(event=None):
         save_config()
 
-    for widget in [entry_header, entry_footer, entry_contact, entry_receiver, entry_position]:
+    for widget in [entry_header, entry_footer, entry_contact, entry_receiver, entry_position, entry_logo_path]:
         widget.bind("<FocusOut>", on_config_change)
     entry_body.bind("<FocusOut>", on_config_change)
     
@@ -503,10 +525,11 @@ def create_billing_form(master):
                 "attorney": entry_attorney.get(),
                 "subtotal": subtotal_value.cget("text"),
                 "items": [],
-            "header": entry_header.get("1.0", "end").strip(),
-            "footer": entry_footer.get("1.0", "end").strip(),
+                "header": entry_header.get("1.0", "end").strip(),
+                "footer": entry_footer.get("1.0", "end").strip(),
                 "body_message": entry_body.get("1.0", "end").strip(),
-                "company_contact": entry_contact.get("1.0", "end").strip()
+                "company_contact": entry_contact.get("1.0", "end").strip(),
+                "logo_path": entry_logo_path.get()
             }
             save_config()  # Save config on PDF generation as well
             data["items"] = []
@@ -572,6 +595,7 @@ def create_billing_form(master):
     btn_generate.pack(side="right", fill="x", expand=True)
     
     # Only insert default values if config_data has a value, otherwise leave empty for placeholder
+
     if config_data.get("header"):
         entry_header.insert("1.0", config_data.get("header"))
     if config_data.get("footer"):
@@ -584,5 +608,7 @@ def create_billing_form(master):
         entry_receiver.insert(0, config_data.get("receiver"))
     if config_data.get("position"):
         entry_position.insert(0, config_data.get("position"))
+    if config_data.get("logo_path"):
+        entry_logo_path.insert(0, config_data.get("logo_path"))
 
     return main_frame

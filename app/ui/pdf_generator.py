@@ -15,6 +15,45 @@ def generate_invoice_pdf(data, filename):
     margin_x = 1 * inch
     y = height - 1 * inch  # Top margin (for header)
 
+    # Logo (top right, persistent)
+    logo_path = data.get("logo_path")
+    logo_max_width = 1.5 * inch
+    logo_max_height = 1.0 * inch
+    logo_margin_top = 0.3 * inch
+    logo_margin_right = 1.0 * inch
+    if logo_path:
+        if os.path.exists(logo_path):
+            try:
+                from reportlab.lib.utils import ImageReader
+                logo = ImageReader(logo_path)
+                img_width, img_height = logo.getSize()
+                aspect = img_width / img_height
+                # Fit logo inside the bounding box (never exceed either dimension)
+                scale = min(logo_max_width / img_width, logo_max_height / img_height)
+                draw_width = img_width * scale
+                draw_height = img_height * scale
+                # Center vertically in the allowed box
+                y_logo = height - logo_margin_top - ((logo_max_height - draw_height) / 2) - draw_height
+                c.drawImage(
+                    logo,
+                    width - logo_margin_right - draw_width,
+                    y_logo,
+                    width=draw_width,
+                    height=draw_height,
+                    mask='auto',
+                    preserveAspectRatio=True
+                )
+            except Exception as e:
+                c.setFont("Helvetica", 8)
+                c.setFillColorRGB(1, 0, 0)
+                c.drawString(width - logo_margin_right - logo_max_width, height - logo_margin_top - 10, f"[Logo error: {str(e)[:30]}]")
+                c.setFillColorRGB(0, 0, 0)
+        else:
+            c.setFont("Helvetica", 8)
+            c.setFillColorRGB(1, 0, 0)
+            c.drawString(width - logo_margin_right - logo_max_width, height - logo_margin_top - 10, "[Logo not found]")
+            c.setFillColorRGB(0, 0, 0)
+
     # Header (dynamic height, up to 1/3 page, always starts at top margin)
     header_height_used = 0
     if data.get("header"):
@@ -26,10 +65,13 @@ def generate_invoice_pdf(data, filename):
         font_size = 14
         leading = 18
         header_text = data["header"].replace("\n", "<br/>")
+        # Reserve space for logo on the right
+        right_margin_for_logo = logo_max_width + logo_margin_right + 0.2 * inch
+        available_header_width = width - margin_x - right_margin_for_logo
         while font_size >= min_font_size:
-            header_style = ParagraphStyle('Header', fontName="Helvetica-Bold", fontSize=font_size, leading=leading, alignment=1, textColor=colors.black)
+            header_style = ParagraphStyle('Header', fontName="Helvetica-Bold", fontSize=font_size, leading=leading, alignment=0, textColor=colors.black)  # align left
             header = Paragraph(header_text, header_style)
-            w, h = header.wrap(width - 2 * margin_x, max_header_height)
+            w, h = header.wrap(available_header_width, max_header_height)
             if h <= max_header_height:
                 break
             font_size -= 2
@@ -37,8 +79,8 @@ def generate_invoice_pdf(data, filename):
         else:
             header_text = header_text[:1500] + "<br/><b>...(truncated)</b>" if len(header_text) > 1500 else header_text
             header = Paragraph(header_text, header_style)
-            w, h = header.wrap(width - 2 * margin_x, max_header_height)
-        # Draw header at the very top of the page (like DOCX)
+            w, h = header.wrap(available_header_width, max_header_height)
+        # Draw header at the very top of the page (like DOCX), left-aligned
         header_y = height - h - 0.4 * inch
         header.drawOn(c, margin_x, header_y)
         y = header_y - 0.2 * inch
@@ -49,7 +91,7 @@ def generate_invoice_pdf(data, filename):
 
 
     # Name, Date, Re
-    c.drawString(margin_x, y, f"Name: {data.get('client_name', '')}")
+    c.drawString(margin_x, y, f"Attention: {data.get('client_name', '')} ")
     y -= 0.32 * inch
 
     # Format date as 'Month Day, Year' (e.g., July 10, 2025)
