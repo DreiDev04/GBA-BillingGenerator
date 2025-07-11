@@ -1,4 +1,4 @@
-from reportlab.lib.pagesizes import legal, letter
+from reportlab.lib.pagesizes import legal, letter, A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import Paragraph, Table, TableStyle
@@ -10,17 +10,17 @@ from reportlab.lib.enums import TA_LEFT
 
 # Add your PDF generation functions here. Example:
 def generate_invoice_pdf(data, filename):
-    c = canvas.Canvas(filename, pagesize=legal)
-    width, height = legal
-    margin_x = 1 * inch
-    y = height - 1 * inch  # Top margin (for header)
+    c = canvas.Canvas(filename, pagesize=A4)
+    width, height = A4
+    margin_x = 0.75 * inch  # Slightly smaller margin for A4
+    y = height - 0.75 * inch  # Top margin (for header)
 
     # Logo (top right, persistent)
     logo_path = data.get("logo_path")
-    logo_max_width = 1.5 * inch
-    logo_max_height = 1.0 * inch
-    logo_margin_top = 0.3 * inch
-    logo_margin_right = 1.0 * inch
+    logo_max_width = 1.2 * inch  # Slightly smaller for A4
+    logo_max_height = 0.8 * inch
+    logo_margin_top = 0.2 * inch
+    logo_margin_right = 0.7 * inch
     if logo_path:
         if os.path.exists(logo_path):
             try:
@@ -60,18 +60,18 @@ def generate_invoice_pdf(data, filename):
         from reportlab.platypus import Paragraph
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib import colors
-        max_header_height = height / 3
+        max_header_height = height / 3.5  # Slightly less for A4
         # Split header into lines
         header_lines = data["header"].split("\n")
         first_line = header_lines[0] if len(header_lines) > 0 else ""
         second_line = header_lines[1] if len(header_lines) > 1 else ""
         third_line = header_lines[2] if len(header_lines) > 2 else ""
         # Reserve space for logo on the right
-        right_margin_for_logo = logo_max_width + logo_margin_right + 0.2 * inch
+        right_margin_for_logo = logo_max_width + logo_margin_right + 0.1 * inch
         available_header_width = width - margin_x - right_margin_for_logo
         # Styles
-        first_style = ParagraphStyle('HeaderBold', fontName="Helvetica-Bold", fontSize=16, leading=20, alignment=0, textColor=colors.black)
-        sub_style = ParagraphStyle('HeaderSub', fontName="Helvetica", fontSize=11, leading=14, alignment=0, textColor=colors.black)
+        first_style = ParagraphStyle('HeaderBold', fontName="Helvetica-Bold", fontSize=15, leading=18, alignment=0, textColor=colors.black)
+        sub_style = ParagraphStyle('HeaderSub', fontName="Helvetica", fontSize=10, leading=12, alignment=0, textColor=colors.black)
         # Paragraphs
         para_first = Paragraph(first_line, first_style)
         para_second = Paragraph(second_line, sub_style) if second_line else None
@@ -88,7 +88,7 @@ def generate_invoice_pdf(data, filename):
             w3, h3 = para_third.wrap(available_header_width, max_header_height - h_total)
             h_total += h3
         # Draw header lines
-        header_y = height - h_total - 0.4 * inch
+        header_y = height - h_total - 0.25 * inch
         y_cursor = header_y + h_total
         para_first.drawOn(c, margin_x, y_cursor - h1)
         y_cursor -= h1
@@ -98,16 +98,16 @@ def generate_invoice_pdf(data, filename):
         if para_third:
             para_third.drawOn(c, margin_x, y_cursor - h3)
             y_cursor -= h3
-        y = header_y - 0.8 * inch  # Increased space after header
+        y = header_y - 0.5 * inch  # Less space after header for A4
         header_height_used = h_total + 0.4 * inch
-    c.setFont("Helvetica", 12)
+    c.setFont("Helvetica", 11)
     c.setFillColorRGB(0, 0, 0)
 
 
 
     # Name, Date, Re
     c.drawString(margin_x, y, f"Attention: {data.get('client_name', '')} ")
-    y -= 0.32 * inch
+    y -= 0.28 * inch
 
     # Format date as 'Month Day, Year' (e.g., July 10, 2025)
     import datetime
@@ -125,45 +125,86 @@ def generate_invoice_pdf(data, filename):
         except Exception:
             pass
     c.drawString(margin_x, y, f"Date: {formatted_date}")
-    y -= 0.32 * inch
+    y -= 0.28 * inch
     c.drawString(margin_x, y, f"Re: {data.get('service', '')}")
-    y -= 0.45 * inch
+    y -= 0.35 * inch
 
     # Divider
     c.setStrokeColorRGB(0.8, 0.8, 0.8)
-    c.setLineWidth(0.7)
+    c.setLineWidth(0.6)
     c.line(margin_x, y, width - margin_x, y)
-    y -= 0.4 * inch
+    y -= 0.3 * inch
 
-    # Body Message
-    if data.get("body_message"):
-        from reportlab.platypus import Paragraph, Frame
-        from reportlab.lib.styles import ParagraphStyle
-        from reportlab.lib import colors
-        body_style = ParagraphStyle('Body', fontName="Helvetica", fontSize=12, leading=18, textColor=colors.black)
-        body = Paragraph(data["body_message"].replace("\n", "<br/>"), body_style)
-        body_height = 1.5 * inch
-        body_frame = Frame(margin_x, y - body_height, width - 2 * margin_x, body_height, showBoundary=0)
-        body_frame.addFromList([body], c)
-        y -= body_height + 0.2 * inch
+    # Body Message (dynamic height, supports overflow to new page)
+    from reportlab.platypus import Paragraph, Frame
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib import colors
+    body_message = data.get("body_message", "")
+    body_style = ParagraphStyle('Body', fontName="Helvetica", fontSize=11, leading=16, textColor=colors.black)
+    if body_message:
+        body = Paragraph(body_message.replace("\n", "<br/>"), body_style)
+        avail_height = y - 0.75 * inch  # Reserve bottom margin
+        w, h = body.wrap(width - 2 * margin_x, avail_height)
+        if h <= avail_height:
+            body.drawOn(c, margin_x, y - h)
+            y -= h + 0.15 * inch
+        else:
+            # Split and render across pages
+            story = body.split(width - 2 * margin_x, avail_height)
+            for part in story:
+                part_h = part.height
+                if part_h > avail_height:
+                    part_h = avail_height
+                part.drawOn(c, margin_x, y - part_h)
+                y -= part_h
+                c.showPage()
+                c.setFont("Helvetica", 11)
+                y = height - 0.75 * inch
+                avail_height = y - 0.75 * inch
+            y -= 0.15 * inch
     else:
-        y -= 0.2 * inch
+        y -= 0.15 * inch
+
+    # Company Contact (dynamic height, supports overflow to new page)
+    company_contact = data.get("company_contact", "")
+    contact_style = ParagraphStyle('Contact', fontName="Helvetica-Bold", fontSize=11, leading=14, alignment=1, textColor=colors.black)
+    if company_contact:
+        contact = Paragraph(company_contact.replace("\n", "<br/>"), contact_style)
+        avail_height = y - 0.75 * inch
+        w, h = contact.wrap(width - 2 * margin_x, avail_height)
+        if h <= avail_height:
+            contact.drawOn(c, margin_x, y - h)
+            y -= h + 0.3 * inch
+        else:
+            # Split and render across pages
+            story = contact.split(width - 2 * margin_x, avail_height)
+            for part in story:
+                part_h = part.height
+                if part_h > avail_height:
+                    part_h = avail_height
+                part.drawOn(c, margin_x, y - part_h)
+                y -= part_h
+                c.showPage()
+                c.setFont("Helvetica", 11)
+                y = height - 0.75 * inch
+                avail_height = y - 0.75 * inch
+            y -= 0.3 * inch
 
     # Divider
     c.setStrokeColorRGB(0.8, 0.8, 0.8)
-    c.setLineWidth(0.7)
+    c.setLineWidth(0.6)
     c.line(margin_x, y, width - margin_x, y)
-    y -= 0.5 * inch
+    y -= 0.35 * inch
 
     # BILLING STATEMENT title (centered, bold, underlined)
-    c.setFont("Helvetica-Bold", 18)
+    c.setFont("Helvetica-Bold", 16)
     title = "BILLING STATEMENT"
     title_width = c.stringWidth(title, "Helvetica-Bold", 18)
     c.drawString((width - title_width) / 2, y, title)
     c.setLineWidth(1.2)
     c.setStrokeColorRGB(0, 0, 0)
     c.line((width - title_width) / 2, y - 3, (width + title_width) / 2, y - 3)
-    y -= 0.5 * inch
+    y -= 0.35 * inch
 
     # Table
     table_data = [["Description", "Qty", "Unit Price", "Amount"]]
@@ -187,16 +228,16 @@ def generate_invoice_pdf(data, filename):
 
     # Calculate responsive column widths based on available width
     available_width = width - 2 * margin_x
-    desc_col = 0.36 * available_width
+    desc_col = 0.38 * available_width
     qty_col = 0.13 * available_width
-    unit_col = 0.25 * available_width
+    unit_col = 0.23 * available_width
     amt_col = 0.26 * available_width
 
     # Wrap long description text before creating the Table
     from reportlab.platypus import Paragraph
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_LEFT
-    desc_style = ParagraphStyle('desc', fontName="Helvetica", fontSize=11, leading=13, alignment=TA_LEFT)
+    desc_style = ParagraphStyle('desc', fontName="Helvetica", fontSize=10, leading=12, alignment=TA_LEFT)
     for i in range(1, len(table_data)):
         desc = table_data[i][0]
         if isinstance(desc, str) and len(desc) > 40:
@@ -217,50 +258,32 @@ def generate_invoice_pdf(data, filename):
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
 
-    table_height = (len(table_data) + 1) * 0.32 * inch
+    table_height = (len(table_data) + 1) * 0.28 * inch
     table.wrapOn(c, width, height)
     table.drawOn(c, margin_x, y - table_height)
-    y -= table_height + 0.5 * inch
-
-    # Divider
-    c.setStrokeColorRGB(0.8, 0.8, 0.8)
-    c.setLineWidth(0.7)
-    c.line(margin_x, y, width - margin_x, y)
-    y -= 0.4 * inch
-
-    # Company Contact (centered, bold, with space)
-    if data.get("company_contact"):
-        from reportlab.platypus import Paragraph, Frame
-        from reportlab.lib.styles import ParagraphStyle
-        from reportlab.lib import colors
-        contact_style = ParagraphStyle('Contact', fontName="Helvetica-Bold", fontSize=12, leading=16, alignment=1, textColor=colors.black)  # 1=center
-        contact = Paragraph(data["company_contact"].replace("\n", "<br/>"), contact_style)
-        contact_height = max(0.8 * inch, 0.25 * inch * (data["company_contact"].count("\n") + 1))
-        contact_frame = Frame(margin_x, y - contact_height, width - 2 * margin_x, contact_height, showBoundary=0)
-        contact_frame.addFromList([contact], c)
-        y -= contact_height + 0.5 * inch  # Extra space after
+    y -= table_height + 0.35 * inch
 
     # Prepared By (left-aligned, not bold)
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("Helvetica-Bold", 11)
     c.drawString(margin_x, y, "Prepared By:")
-    y -= 0.28 * inch
-    c.setFont("Helvetica", 12)
+    y -= 0.22 * inch
+    c.setFont("Helvetica", 11)
     receiver = data.get("receiver", "")
     if receiver:
         c.drawString(margin_x, y, receiver)
-        y -= 0.28 * inch
+        y -= 0.22 * inch
     position = data.get("position")
     if position:
         c.drawString(margin_x, y, position)
-        y -= 0.28 * inch
+        y -= 0.22 * inch
 
     # Noted By (left-aligned, not bold)
     if data.get("attorney"):
-        y -= 0.18 * inch
-        c.setFont("Helvetica-Bold", 12)
+        y -= 0.14 * inch
+        c.setFont("Helvetica-Bold", 11)
         c.drawString(margin_x, y, "Noted By:")
-        y -= 0.28 * inch
-        c.setFont("Helvetica", 12)
+        y -= 0.22 * inch
+        c.setFont("Helvetica", 11)
         c.drawString(margin_x, y, data["attorney"])
 
 
@@ -270,10 +293,10 @@ def generate_invoice_pdf(data, filename):
         from reportlab.platypus import Paragraph
         from reportlab.lib.styles import ParagraphStyle
         from reportlab.lib import colors
-        max_footer_height = height / 3
-        min_font_size = 8
+        max_footer_height = height / 3.5
+        min_font_size = 7
         font_size = 8
-        leading = 15
+        leading = 13
         footer_text = data["footer"].replace("\n", "<br/>")
         while font_size >= min_font_size:
             footer_style = ParagraphStyle('Footer', fontName="Helvetica", fontSize=font_size, leading=leading, alignment=1, textColor=colors.grey)
@@ -288,7 +311,7 @@ def generate_invoice_pdf(data, filename):
             footer = Paragraph(footer_text, footer_style)
             w, h = footer.wrap(width - 2 * margin_x, max_footer_height)
         # Draw footer at the very bottom of the page (like DOCX)
-        footer_y = 0.2 * inch
+        footer_y = 0.15 * inch
         footer.drawOn(c, margin_x, footer_y)
         footer_height_used = h + footer_y
 
