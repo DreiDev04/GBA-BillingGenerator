@@ -17,6 +17,19 @@ def generate_invoice_pdf(data, filename):
     c.setFont("Helvetica", 12)
     c.setFillColorRGB(0, 0, 0)
 
+
+    # Header (as paragraph)
+    if data.get("header"):
+        from reportlab.platypus import Paragraph, Frame
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib import colors
+        header_style = ParagraphStyle('Header', fontName="Helvetica-Bold", fontSize=14, leading=18, alignment=1, textColor=colors.black)  # Centered
+        header = Paragraph(data["header"].replace("\n", "<br/>"), header_style)
+        header_height = max(0.7 * inch, 0.22 * inch * (data["header"].count("\n") + 1))
+        header_frame = Frame(margin_x, y - header_height, width - 2 * margin_x, header_height, showBoundary=0)
+        header_frame.addFromList([header], c)
+        y -= header_height + 0.18 * inch
+
     # Name, Date, Re
     c.drawString(margin_x, y, f"Name: {data.get('client_name', '')}")
     y -= 0.32 * inch
@@ -174,5 +187,17 @@ def generate_invoice_pdf(data, filename):
         y -= 0.28 * inch
         c.setFont("Helvetica", 12)
         c.drawString(margin_x, y, data["attorney"])
+
+
+    # Footer (as paragraph, at the bottom)
+    if data.get("footer"):
+        from reportlab.platypus import Paragraph, Frame
+        from reportlab.lib.styles import ParagraphStyle
+        from reportlab.lib import colors
+        footer_style = ParagraphStyle('Footer', fontName="Helvetica", fontSize=11, leading=15, alignment=1, textColor=colors.grey)
+        footer = Paragraph(data["footer"].replace("\n", "<br/>"), footer_style)
+        footer_height = max(0.5 * inch, 0.18 * inch * (data["footer"].count("\n") + 1))
+        footer_frame = Frame(margin_x, 0.7 * inch, width - 2 * margin_x, footer_height, showBoundary=0)
+        footer_frame.addFromList([footer], c)
 
     c.save()

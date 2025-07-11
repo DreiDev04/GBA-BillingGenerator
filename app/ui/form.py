@@ -170,25 +170,26 @@ def create_billing_form(master):
     config_grid.columnconfigure(0, weight=1)
     config_grid.columnconfigure(1, weight=1)
 
-    # Header
-    entry_header = ctk.CTkEntry(
+
+    # Header (as paragraph)
+    entry_header = ctk.CTkTextbox(
         config_grid,
-        placeholder_text="Header (optional)",
+        height=60,
         font=("Segoe UI", 12),
-        height=32,
         corner_radius=8
     )
     entry_header.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="ew")
+    entry_header.insert("1.0", "")
 
-    # Footer
-    entry_footer = ctk.CTkEntry(
+    # Footer (as paragraph)
+    entry_footer = ctk.CTkTextbox(
         config_grid,
-        placeholder_text="Footer (optional)",
+        height=60,
         font=("Segoe UI", 12),
-        height=32,
         corner_radius=8
     )
     entry_footer.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
+    entry_footer.insert("1.0", "")
 
     # Body Message
     entry_body = ctk.CTkTextbox(
@@ -502,8 +503,8 @@ def create_billing_form(master):
                 "attorney": entry_attorney.get(),
                 "subtotal": subtotal_value.cget("text"),
                 "items": [],
-                "header": entry_header.get(),
-                "footer": entry_footer.get(),
+            "header": entry_header.get("1.0", "end").strip(),
+            "footer": entry_footer.get("1.0", "end").strip(),
                 "body_message": entry_body.get("1.0", "end").strip(),
                 "company_contact": entry_contact.get("1.0", "end").strip()
             }
