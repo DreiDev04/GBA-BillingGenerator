@@ -14,10 +14,6 @@ from app.ui.validators import (
 from app.ui.pdf_generator import generate_invoice_pdf
 
 def create_billing_form(master):
-    # Modern theme configuration
-    ctk.set_appearance_mode("dark")
-    ctk.set_default_color_theme("dark-blue")
-    
     # Main container with scrollable frame
     main_frame = ctk.CTkFrame(master, corner_radius=15)
     main_frame.pack(fill="both", expand=True, padx=15, pady=15)
@@ -97,7 +93,7 @@ def create_billing_form(master):
     date_badge = ctk.CTkLabel(
         header_frame,
         text=datetime.now().strftime("%d %b %Y"),
-        font=("Segoe UI", 10),
+        font=("Segoe UI", 12),
         corner_radius=10,
         fg_color=("#E1E1E1", "#3A3A3A"),
         padx=10,
@@ -108,7 +104,7 @@ def create_billing_form(master):
     # Form sections function
     def create_section(parent, title_text):
         frame = ctk.CTkFrame(parent, corner_radius=12, border_width=1)
-        frame.pack(fill="x", padx=15, pady=8)
+        frame.pack(fill="x", padx=15, pady=15)
         
         if title_text:
             section_title = ctk.CTkLabel(
@@ -156,7 +152,8 @@ def create_billing_form(master):
             "body_message": entry_body.get("1.0", "end").strip(),
             "company_contact": entry_contact.get("1.0", "end").strip(),
             "receiver": entry_receiver.get(),
-            "position": entry_position.get()
+            "position": entry_position.get(),
+            "attorney": entry_attorney.get()
         }
         try:
             with open(CONFIG_PATH, "w") as f:
@@ -166,10 +163,10 @@ def create_billing_form(master):
 
     config_data = load_config()
 
-    config_frame = create_section(scroll_frame, "CONFIGURATION (PERSISTENT)")
+    config_frame = create_section(scroll_frame, "CONFIGURATION")
 
     config_grid = ctk.CTkFrame(config_frame, fg_color="transparent")
-    config_grid.pack(fill="x", padx=10, pady=5)
+    config_grid.pack(fill="x", padx=15, pady=15)
     config_grid.columnconfigure(0, weight=1)
     config_grid.columnconfigure(1, weight=1)
 
@@ -196,20 +193,20 @@ def create_billing_form(master):
     # Body Message
     entry_body = ctk.CTkTextbox(
         config_frame,
-        height=60,
+        height=120,
         font=("Segoe UI", 12),
         corner_radius=8
     )
-    entry_body.pack(fill="x", padx=10, pady=(0, 5))
+    entry_body.pack(fill="x", padx=15, pady=(0, 15))
 
     # Company Contact
     entry_contact = ctk.CTkTextbox(
         config_frame,
-        height=60,
+        height=120,
         font=("Segoe UI", 12),
         corner_radius=8
     )
-    entry_contact.pack(fill="x", padx=10, pady=(0, 5))
+    entry_contact.pack(fill="x", padx=15, pady=(0, 15))
 
     # --- Your Information Section (Persistent) ---
     personal_frame = create_section(scroll_frame, "YOUR INFORMATION")
@@ -221,7 +218,7 @@ def create_billing_form(master):
         height=38,
         corner_radius=8
     )
-    entry_receiver.pack(fill="x", padx=10, pady=(0, 0))
+    entry_receiver.pack(fill="x", padx=10, pady=(0, 10))
 
     entry_position = ctk.CTkEntry(
         personal_frame, 
@@ -230,7 +227,7 @@ def create_billing_form(master):
         height=38,
         corner_radius=8
     )
-    entry_position.pack(fill="x", padx=10, pady=(0, 5))
+    entry_position.pack(fill="x", padx=10, pady=(0, 10))
 
     # Save config on change
     def on_config_change(event=None):
@@ -267,7 +264,7 @@ def create_billing_form(master):
     )
     entry_date.insert(0, datetime.now().strftime("%m-%d-%Y"))
     entry_date.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
-    create_error_label(client_frame, "client_date").pack(fill="x", padx=10, pady=(0, 5))
+
     
     # Service Details Section
     service_frame = create_section(scroll_frame, "SERVICE DETAILS")
@@ -465,7 +462,7 @@ def create_billing_form(master):
         height=38,
         corner_radius=8
     )
-    status_dropdown.pack(fill="x", padx=10, pady=5)
+    status_dropdown.pack(fill="x", padx=15, pady=15)
     
     # Attorney Information
     attorney_frame = create_section(scroll_frame, "ATTORNEY INFORMATION")
