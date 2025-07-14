@@ -59,8 +59,12 @@ def create_billing_form(master):
         if not validate_required(entry_service.get()):
             show_error("service", "Service description is required")
         
-        if entry_attorney.get() and not validate_name(entry_attorney.get()):
-            show_error("attorney", "Invalid attorney name")
+        # Only validate attorney if not empty and longer than 2 characters
+        atty_val = entry_attorney.get()
+        if atty_val:
+            # Accept short names or initials, or relax validation
+            if len(atty_val.strip()) > 2 and not validate_name(atty_val):
+                show_error("attorney", "Invalid attorney name")
         
         # Validate billing items
         valid_items = []
@@ -184,7 +188,7 @@ def create_billing_form(master):
     # Header (as paragraph)
     entry_header = ctk.CTkTextbox(
         config_grid,
-        height=60,
+        height=90,
         font=("Segoe UI", 12),
         corner_radius=8
     )
@@ -194,7 +198,7 @@ def create_billing_form(master):
     # Footer (as paragraph)
     entry_footer = ctk.CTkTextbox(
         config_grid,
-        height=60,
+        height=90,
         font=("Segoe UI", 12),
         corner_radius=8
     )
@@ -628,6 +632,8 @@ def create_billing_form(master):
         entry_receiver.insert(0, config_data.get("receiver"))
     if config_data.get("position"):
         entry_position.insert(0, config_data.get("position"))
+    if config_data.get("attorney"):
+        entry_attorney.insert(0, config_data.get("attorney"))
     if config_data.get("logo_path"):
         entry_logo_path.insert(0, config_data.get("logo_path"))
 
