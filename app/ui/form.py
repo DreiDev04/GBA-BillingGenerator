@@ -157,6 +157,7 @@ def create_billing_form(master):
             "footer": entry_footer.get("1.0", "end").strip(),
             "body_message": entry_body.get("1.0", "end").strip(),
             "company_contact": entry_contact.get("1.0", "end").strip(),
+            "contact_message": entry_contact_message.get("1.0", "end").strip(),
             "receiver": entry_receiver.get(),
             "position": entry_position.get(),
             "attorney": entry_attorney.get(),
@@ -177,6 +178,16 @@ def create_billing_form(master):
     config_grid.pack(fill="x", padx=15, pady=15)
     config_grid.columnconfigure(0, weight=1)
     config_grid.columnconfigure(1, weight=1)
+
+    # Contact Message (persistent, above company contact)
+    ctk.CTkLabel(config_frame, text="Contact Message (shown above company contact):", font=("Segoe UI", 12)).pack(fill="x", padx=15, pady=(0, 2))
+    entry_contact_message = ctk.CTkTextbox(
+        config_frame,
+        height=50,
+        font=("Segoe UI", 12),
+        corner_radius=8
+    )
+    entry_contact_message.pack(fill="x", padx=15, pady=(0, 10))
 
     # Header (as paragraph)
     entry_header = ctk.CTkTextbox(
@@ -223,6 +234,7 @@ def create_billing_form(master):
     entry_body.pack(fill="x", padx=15, pady=(0, 15))
 
     # Company Contact
+    ctk.CTkLabel(config_frame, text="Company Contact:", font=("Segoe UI", 12)).pack(fill="x", padx=15, pady=(0, 2))
     entry_contact = ctk.CTkTextbox(
         config_frame,
         height=120,
@@ -256,7 +268,7 @@ def create_billing_form(master):
     def on_config_change(event=None):
         save_config()
 
-    for widget in [entry_header, entry_footer, entry_contact, entry_receiver, entry_position, entry_logo_path]:
+    for widget in [entry_header, entry_footer, entry_contact, entry_receiver, entry_position, entry_logo_path, entry_contact_message]:
         widget.bind("<FocusOut>", on_config_change)
     entry_body.bind("<FocusOut>", on_config_change)
     
@@ -529,6 +541,7 @@ def create_billing_form(master):
                 "footer": entry_footer.get("1.0", "end").strip(),
                 "body_message": entry_body.get("1.0", "end").strip(),
                 "company_contact": entry_contact.get("1.0", "end").strip(),
+                "contact_message": entry_contact_message.get("1.0", "end").strip(),
                 "logo_path": entry_logo_path.get()
             }
             save_config()  # Save config on PDF generation as well
@@ -604,6 +617,8 @@ def create_billing_form(master):
         entry_body.insert("1.0", config_data.get("body_message"))
     if config_data.get("company_contact"):
         entry_contact.insert("1.0", config_data.get("company_contact"))
+    if config_data.get("contact_message"):
+        entry_contact_message.insert("1.0", config_data.get("contact_message"))
     if config_data.get("receiver"):
         entry_receiver.insert(0, config_data.get("receiver"))
     if config_data.get("position"):

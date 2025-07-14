@@ -165,39 +165,17 @@ def generate_invoice_pdf(data, filename):
     else:
         y -= 0.15 * inch
 
-    # Company Contact (dynamic height, supports overflow to new page)
-    company_contact = data.get("company_contact", "")
-    contact_style = ParagraphStyle('Contact', fontName="Helvetica-Bold", fontSize=11, leading=14, alignment=1, textColor=colors.black)
-    if company_contact:
-        contact = Paragraph(company_contact.replace("\n", "<br/>"), contact_style)
-        avail_height = y - 0.75 * inch
-        w, h = contact.wrap(width - 2 * margin_x, avail_height)
-        if h <= avail_height:
-            contact.drawOn(c, margin_x, y - h)
-            y -= h + 0.3 * inch
-        else:
-            # Split and render across pages
-            story = contact.split(width - 2 * margin_x, avail_height)
-            for part in story:
-                part_h = part.height
-                if part_h > avail_height:
-                    part_h = avail_height
-                part.drawOn(c, margin_x, y - part_h)
-                y -= part_h
-                c.showPage()
-                c.setFont("Helvetica", 11)
-                y = height - 0.75 * inch
-                avail_height = y - 0.75 * inch
-            y -= 0.3 * inch
 
+    # --- Move BILLING STATEMENT section above contact info ---
     # Divider
     c.setStrokeColorRGB(0.8, 0.8, 0.8)
     c.setLineWidth(0.6)
     c.line(margin_x, y, width - margin_x, y)
     y -= 0.35 * inch
 
-    # BILLING STATEMENT title (centered, bold, underlined)
+    # BILLING STATEMENT title (centered, bold, underlined, black)
     c.setFont("Helvetica-Bold", 16)
+    c.setFillColorRGB(0, 0, 0)
     title = "BILLING STATEMENT"
     title_width = c.stringWidth(title, "Helvetica-Bold", 18)
     c.drawString((width - title_width) / 2, y, title)
@@ -263,32 +241,66 @@ def generate_invoice_pdf(data, filename):
     table.drawOn(c, margin_x, y - table_height)
     y -= table_height + 0.35 * inch
 
-    # Prepared By (left-aligned, not bold)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawString(margin_x, y, "Prepared By:")
-    y -= 0.22 * inch
-    c.setFont("Helvetica", 11)
-    receiver = data.get("receiver", "")
-    if receiver:
-        c.drawString(margin_x, y, receiver)
-        y -= 0.22 * inch
-    position = data.get("position")
-    if position:
-        c.drawString(margin_x, y, position)
-        y -= 0.22 * inch
+    # --- Contact Information Section (after billing statement) ---
+    # Divider
+    c.setStrokeColorRGB(0.8, 0.8, 0.8)
+    c.setLineWidth(0.6)
+    c.line(margin_x, y, width - margin_x, y)
+    y -= 0.35 * inch
 
-    # Noted By (left-aligned, not bold)
-    if data.get("attorney"):
-        y -= 0.14 * inch
-        c.setFont("Helvetica-Bold", 11)
-        c.drawString(margin_x, y, "Noted By:")
-        y -= 0.22 * inch
-        c.setFont("Helvetica", 11)
-        c.drawString(margin_x, y, data["attorney"])
+    # Contact Message (black, centered)
+    contact_message = data.get("contact_message", "")
+    if contact_message:
+        contact_message_style = ParagraphStyle('ContactMsg', fontName="Helvetica", fontSize=10, leading=14, alignment=1, textColor=colors.black)
+        contact_msg = Paragraph(contact_message.replace("\n", "<br/>"), contact_message_style)
+        avail_height = y - 0.75 * inch
+        w, h = contact_msg.wrap(width - 2 * margin_x, avail_height)
+        if h <= avail_height:
+            contact_msg.drawOn(c, margin_x, y - h)
+            y -= h + 0.1 * inch
+        else:
+            # Split and render across pages
+            story = contact_msg.split(width - 2 * margin_x, avail_height)
+            for part in story:
+                part_h = part.height
+                if part_h > avail_height:
+                    part_h = avail_height
+                part.drawOn(c, margin_x, y - part_h)
+                y -= part_h
+                c.showPage()
+                c.setFont("Helvetica", 11)
+                y = height - 0.75 * inch
+                avail_height = y - 0.75 * inch
+            y -= 0.1 * inch
 
+    # Company Contact (black, centered)
+    company_contact = data.get("company_contact", "")
+    contact_style = ParagraphStyle('Contact', fontName="Helvetica-Bold", fontSize=11, leading=14, alignment=1, textColor=colors.black)
+    if company_contact:
+        contact = Paragraph(company_contact.replace("\n", "<br/>"), contact_style)
+        avail_height = y - 0.75 * inch
+        w, h = contact.wrap(width - 2 * margin_x, avail_height)
+        if h <= avail_height:
+            contact.drawOn(c, margin_x, y - h)
+            y -= h + 0.3 * inch
+        else:
+            # Split and render across pages
+            story = contact.split(width - 2 * margin_x, avail_height)
+            for part in story:
+                part_h = part.height
+                if part_h > avail_height:
+                    part_h = avail_height
+                part.drawOn(c, margin_x, y - part_h)
+                y -= part_h
+                c.showPage()
+                c.setFont("Helvetica", 11)
+                y = height - 0.75 * inch
+                avail_height = y - 0.75 * inch
+            y -= 0.3 * inch
 
-    # Footer (dynamic height, up to 1/3 page, always starts at bottom margin)
-    footer_height_used = 0
+    # --- Calculate footer height, but do not draw yet ---
+    footer_height = 0
+    footer_obj = None
     if data.get("footer"):
         from reportlab.platypus import Paragraph
         from reportlab.lib.styles import ParagraphStyle
@@ -310,9 +322,37 @@ def generate_invoice_pdf(data, filename):
             footer_text = footer_text[:1500] + "<br/><b>...(truncated)</b>" if len(footer_text) > 1500 else footer_text
             footer = Paragraph(footer_text, footer_style)
             w, h = footer.wrap(width - 2 * margin_x, max_footer_height)
-        # Draw footer at the very bottom of the page (like DOCX)
+        footer_obj = footer
+        footer_height = h
+
+    # Place Prepared By and Noted By exactly 1 inch above the bottom
+    prepared_y = 2.30 * inch 
+    
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(margin_x, prepared_y, "Prepared By:")
+    c.setFont("Helvetica", 11)
+    receiver = data.get("receiver", "")
+    pos_y = prepared_y - 0.22 * inch
+    if receiver:
+        c.drawString(margin_x, pos_y, receiver)
+        pos_y -= 0.22 * inch
+    position = data.get("position")
+    if position:
+        c.drawString(margin_x, pos_y, position)
+        pos_y -= 0.22 * inch
+
+    # Noted By (left-aligned, not bold, below Prepared By)
+    if data.get("attorney"):
+        pos_y -= 0.19 * inch
+        c.setFont("Helvetica-Bold", 11)
+        c.drawString(margin_x, pos_y, "Noted By:")
+        pos_y -= 0.27 * inch
+        c.setFont("Helvetica", 11)
+        c.drawString(margin_x, pos_y, data["attorney"])
+
+    # Now draw the footer at the very bottom
+    if footer_obj:
         footer_y = 0.15 * inch
-        footer.drawOn(c, margin_x, footer_y)
-        footer_height_used = h + footer_y
+        footer_obj.drawOn(c, margin_x, footer_y)
 
     c.save()
