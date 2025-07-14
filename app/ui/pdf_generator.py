@@ -140,7 +140,8 @@ def generate_invoice_pdf(data, filename):
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib import colors
     body_message = data.get("body_message", "")
-    body_style = ParagraphStyle('Body', fontName="Helvetica", fontSize=11, leading=16, textColor=colors.black)
+    from reportlab.lib.enums import TA_JUSTIFY
+    body_style = ParagraphStyle('Body', fontName="Helvetica", fontSize=11, leading=16, textColor=colors.black, alignment=TA_JUSTIFY)
     if body_message:
         body = Paragraph(body_message.replace("\n", "<br/>"), body_style)
         avail_height = y - 0.75 * inch  # Reserve bottom margin
