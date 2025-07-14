@@ -11,7 +11,7 @@ def start_app():
     # Create the main window
     root = ctk.CTk()
     root.title("GBA Law Office - Billing Invoice Generator")
-    root.geometry("800x600")
+    root.geometry("1280x720")
 
     # Add the billing form from ui/form.py
     form = create_billing_form(master=root)

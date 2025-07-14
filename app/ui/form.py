@@ -179,15 +179,7 @@ def create_billing_form(master):
     config_grid.columnconfigure(0, weight=1)
     config_grid.columnconfigure(1, weight=1)
 
-    # Contact Message (persistent, above company contact)
-    ctk.CTkLabel(config_frame, text="Contact Message (shown above company contact):", font=("Segoe UI", 12)).pack(fill="x", padx=15, pady=(0, 2))
-    entry_contact_message = ctk.CTkTextbox(
-        config_frame,
-        height=50,
-        font=("Segoe UI", 12),
-        corner_radius=8
-    )
-    entry_contact_message.pack(fill="x", padx=15, pady=(0, 10))
+    
 
     # Header (as paragraph)
     entry_header = ctk.CTkTextbox(
@@ -232,6 +224,16 @@ def create_billing_form(master):
         corner_radius=8
     )
     entry_body.pack(fill="x", padx=15, pady=(0, 15))
+
+    # Contact Message (persistent, above company contact)
+    ctk.CTkLabel(config_frame, text="Contact Message:", font=("Segoe UI", 12)).pack(fill="x", padx=15, pady=(0, 2))
+    entry_contact_message = ctk.CTkTextbox(
+        config_frame,
+        height=50,
+        font=("Segoe UI", 12),
+        corner_radius=8
+    )
+    entry_contact_message.pack(fill="x", padx=15, pady=(0, 10))
 
     # Company Contact
     ctk.CTkLabel(config_frame, text="Company Contact:", font=("Segoe UI", 12)).pack(fill="x", padx=15, pady=(0, 2))
@@ -453,22 +455,25 @@ def create_billing_form(master):
     # Totals section
     totals_frame = ctk.CTkFrame(billing_frame, fg_color="transparent")
     totals_frame.pack(fill="x", padx=10, pady=(5, 0))
-    
+    totals_frame.columnconfigure(0, weight=1)
+    totals_frame.columnconfigure(1, weight=0)
+    totals_frame.columnconfigure(2, weight=0)
+
     subtotal_label = ctk.CTkLabel(
         totals_frame,
         text="Subtotal:",
-        font=("Segoe UI", 11),
+        font=("Segoe UI", 23, "bold"),
         anchor="e"
     )
-    subtotal_label.grid(row=0, column=0, sticky="e")
-    
+    subtotal_label.grid(row=0, column=1, sticky="e", padx=(0, 10), pady=(8, 8))
+
     subtotal_value = ctk.CTkLabel(
         totals_frame,
         text="PHP 0.00",
-        font=("Segoe UI Semibold", 11),
+        font=("Segoe UI", 23, "bold"),
         anchor="e"
     )
-    subtotal_value.grid(row=0, column=1, padx=(10, 0), sticky="e")
+    subtotal_value.grid(row=0, column=2, padx=(0, 10), pady=(8, 8), sticky="e")
     
     # Function to update totals
     def update_totals():

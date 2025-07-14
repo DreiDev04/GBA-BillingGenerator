@@ -177,12 +177,16 @@ def generate_invoice_pdf(data, filename):
     c.setFont("Helvetica-Bold", 16)
     c.setFillColorRGB(0, 0, 0)
     title = "BILLING STATEMENT"
-    title_width = c.stringWidth(title, "Helvetica-Bold", 18)
-    c.drawString((width - title_width) / 2, y, title)
+    # Use the same font size as setFont for width calculation
+    title_width = c.stringWidth(title, "Helvetica-Bold", 16)
+    title_x = (width - title_width) / 2
+    c.drawString(title_x, y, title)
+    # Draw underline directly under the text, with a small gap
+    underline_y = y - 4  # 4 points below the baseline
     c.setLineWidth(1.2)
     c.setStrokeColorRGB(0, 0, 0)
-    c.line((width - title_width) / 2, y - 3, (width + title_width) / 2, y - 3)
-    y -= 0.35 * inch
+    c.line(title_x, underline_y, title_x + title_width, underline_y)
+    y -= 0.30 * inch
 
     # Table
     table_data = [["Description", "Qty", "Unit Price", "Amount"]]
@@ -202,7 +206,13 @@ def generate_invoice_pdf(data, filename):
     subtotal = data.get("subtotal", "PHP 0")
     if isinstance(subtotal, str) and "." in subtotal:
         subtotal = subtotal.split(".")[0]
-    table_data.append(["", "", "Subtotal:", subtotal])
+    # Make 'Subtotal:' and the value bold using Paragraph
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.styles import ParagraphStyle
+    subtotal_bold_style = ParagraphStyle('SubtotalBold', fontName="Helvetica-Bold", fontSize=11, leading=13)
+    subtotal_label_para = Paragraph("Subtotal:", subtotal_bold_style)
+    subtotal_value_para = Paragraph(str(subtotal), subtotal_bold_style)
+    table_data.append(["", "", subtotal_label_para, subtotal_value_para])
 
     # Calculate responsive column widths based on available width
     available_width = width - 2 * margin_x
@@ -221,7 +231,7 @@ def generate_invoice_pdf(data, filename):
         if isinstance(desc, str) and len(desc) > 40:
             table_data[i][0] = Paragraph(desc, desc_style)
     table = Table(table_data, colWidths=[desc_col, qty_col, unit_col, amt_col])
-    table.setStyle(TableStyle([
+    table_style = [
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 12),
@@ -234,7 +244,11 @@ def generate_invoice_pdf(data, filename):
         ('ALIGN', (1, 1), (-1, -1), 'RIGHT'),
         ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-    ]))
+    ]
+    # Right-align the subtotal value (last row, last column)
+    subtotal_row_idx = len(table_data) - 1
+    table_style.append(('ALIGN', (3, subtotal_row_idx), (3, subtotal_row_idx), 'RIGHT'))
+    table.setStyle(TableStyle(table_style))
 
     table_height = (len(table_data) + 1) * 0.28 * inch
     table.wrapOn(c, width, height)
