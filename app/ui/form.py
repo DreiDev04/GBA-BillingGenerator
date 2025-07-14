@@ -59,8 +59,12 @@ def create_billing_form(master):
         if not validate_required(entry_service.get()):
             show_error("service", "Service description is required")
         
-        if entry_attorney.get() and not validate_name(entry_attorney.get()):
-            show_error("attorney", "Invalid attorney name")
+        # Only validate attorney if not empty and longer than 2 characters
+        atty_val = entry_attorney.get()
+        if atty_val:
+            # Accept short names or initials, or relax validation
+            if len(atty_val.strip()) > 2 and not validate_name(atty_val):
+                show_error("attorney", "Invalid attorney name")
         
         # Validate billing items
         valid_items = []
@@ -134,7 +138,13 @@ def create_billing_form(master):
 
     # --- Configuration Section (Persistent) ---
     import json
-    CONFIG_PATH = os.path.expanduser("~/.gba_billing_config.json")
+    import sys
+    if getattr(sys, 'frozen', False):
+        # Running as bundled EXE
+        BASE_DIR = os.path.dirname(sys.executable)
+    else:
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    CONFIG_PATH = os.path.join(BASE_DIR, "gba_billing_config.json")
 
     def load_config():
         if os.path.exists(CONFIG_PATH):
@@ -147,13 +157,15 @@ def create_billing_form(master):
 
     def save_config():
         config = {
-            "header": entry_header.get(),
-            "footer": entry_footer.get(),
+            "header": entry_header.get("1.0", "end").strip(),
+            "footer": entry_footer.get("1.0", "end").strip(),
             "body_message": entry_body.get("1.0", "end").strip(),
             "company_contact": entry_contact.get("1.0", "end").strip(),
+            "contact_message": entry_contact_message.get("1.0", "end").strip(),
             "receiver": entry_receiver.get(),
             "position": entry_position.get(),
-            "attorney": entry_attorney.get()
+            "attorney": entry_attorney.get(),
+            "logo_path": entry_logo_path.get()
         }
         try:
             with open(CONFIG_PATH, "w") as f:
@@ -163,6 +175,7 @@ def create_billing_form(master):
 
     config_data = load_config()
 
+
     config_frame = create_section(scroll_frame, "CONFIGURATION")
 
     config_grid = ctk.CTkFrame(config_frame, fg_color="transparent")
@@ -170,25 +183,42 @@ def create_billing_form(master):
     config_grid.columnconfigure(0, weight=1)
     config_grid.columnconfigure(1, weight=1)
 
-    # Header
-    entry_header = ctk.CTkEntry(
+    
+
+    # Header (as paragraph)
+    entry_header = ctk.CTkTextbox(
         config_grid,
-        placeholder_text="Header (optional)",
+        height=90,
         font=("Segoe UI", 12),
-        height=32,
         corner_radius=8
     )
     entry_header.grid(row=0, column=0, padx=(0, 5), pady=5, sticky="ew")
+    entry_header.insert("1.0", "")
 
-    # Footer
-    entry_footer = ctk.CTkEntry(
+    # Footer (as paragraph)
+    entry_footer = ctk.CTkTextbox(
         config_grid,
-        placeholder_text="Footer (optional)",
+        height=90,
         font=("Segoe UI", 12),
-        height=32,
         corner_radius=8
     )
     entry_footer.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ew")
+    entry_footer.insert("1.0", "")
+
+    # Logo path (file picker)
+    logo_frame = ctk.CTkFrame(config_frame, fg_color="transparent")
+    logo_frame.pack(fill="x", padx=15, pady=(0, 10))
+    ctk.CTkLabel(logo_frame, text="Logo (top right, persistent):", font=("Segoe UI", 12)).pack(side="left", padx=(0, 10))
+    entry_logo_path = ctk.CTkEntry(logo_frame, width=320, font=("Segoe UI", 12), corner_radius=8)
+    entry_logo_path.pack(side="left", fill="x", expand=True)
+    def pick_logo_file():
+        path = filedialog.askopenfilename(title="Select Logo Image", filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.gif")])
+        if path:
+            entry_logo_path.delete(0, "end")
+            entry_logo_path.insert(0, path)
+            save_config()
+    btn_logo_browse = ctk.CTkButton(logo_frame, text="Browse", command=pick_logo_file, width=80)
+    btn_logo_browse.pack(side="left", padx=(10, 0))
 
     # Body Message
     entry_body = ctk.CTkTextbox(
@@ -199,7 +229,18 @@ def create_billing_form(master):
     )
     entry_body.pack(fill="x", padx=15, pady=(0, 15))
 
+    # Contact Message (persistent, above company contact)
+    ctk.CTkLabel(config_frame, text="Contact Message:", font=("Segoe UI", 12)).pack(fill="x", padx=15, pady=(0, 2))
+    entry_contact_message = ctk.CTkTextbox(
+        config_frame,
+        height=50,
+        font=("Segoe UI", 12),
+        corner_radius=8
+    )
+    entry_contact_message.pack(fill="x", padx=15, pady=(0, 10))
+
     # Company Contact
+    ctk.CTkLabel(config_frame, text="Company Contact:", font=("Segoe UI", 12)).pack(fill="x", padx=15, pady=(0, 2))
     entry_contact = ctk.CTkTextbox(
         config_frame,
         height=120,
@@ -233,7 +274,7 @@ def create_billing_form(master):
     def on_config_change(event=None):
         save_config()
 
-    for widget in [entry_header, entry_footer, entry_contact, entry_receiver, entry_position]:
+    for widget in [entry_header, entry_footer, entry_contact, entry_receiver, entry_position, entry_logo_path, entry_contact_message]:
         widget.bind("<FocusOut>", on_config_change)
     entry_body.bind("<FocusOut>", on_config_change)
     
@@ -418,22 +459,25 @@ def create_billing_form(master):
     # Totals section
     totals_frame = ctk.CTkFrame(billing_frame, fg_color="transparent")
     totals_frame.pack(fill="x", padx=10, pady=(5, 0))
-    
+    totals_frame.columnconfigure(0, weight=1)
+    totals_frame.columnconfigure(1, weight=0)
+    totals_frame.columnconfigure(2, weight=0)
+
     subtotal_label = ctk.CTkLabel(
         totals_frame,
         text="Subtotal:",
-        font=("Segoe UI", 11),
+        font=("Segoe UI", 23, "bold"),
         anchor="e"
     )
-    subtotal_label.grid(row=0, column=0, sticky="e")
-    
+    subtotal_label.grid(row=0, column=1, sticky="e", padx=(0, 10), pady=(8, 8))
+
     subtotal_value = ctk.CTkLabel(
         totals_frame,
         text="PHP 0.00",
-        font=("Segoe UI Semibold", 11),
+        font=("Segoe UI", 23, "bold"),
         anchor="e"
     )
-    subtotal_value.grid(row=0, column=1, padx=(10, 0), sticky="e")
+    subtotal_value.grid(row=0, column=2, padx=(0, 10), pady=(8, 8), sticky="e")
     
     # Function to update totals
     def update_totals():
@@ -502,10 +546,12 @@ def create_billing_form(master):
                 "attorney": entry_attorney.get(),
                 "subtotal": subtotal_value.cget("text"),
                 "items": [],
-                "header": entry_header.get(),
-                "footer": entry_footer.get(),
+                "header": entry_header.get("1.0", "end").strip(),
+                "footer": entry_footer.get("1.0", "end").strip(),
                 "body_message": entry_body.get("1.0", "end").strip(),
-                "company_contact": entry_contact.get("1.0", "end").strip()
+                "company_contact": entry_contact.get("1.0", "end").strip(),
+                "contact_message": entry_contact_message.get("1.0", "end").strip(),
+                "logo_path": entry_logo_path.get()
             }
             save_config()  # Save config on PDF generation as well
             data["items"] = []
@@ -571,17 +617,24 @@ def create_billing_form(master):
     btn_generate.pack(side="right", fill="x", expand=True)
     
     # Only insert default values if config_data has a value, otherwise leave empty for placeholder
+
     if config_data.get("header"):
-        entry_header.insert(0, config_data.get("header"))
+        entry_header.insert("1.0", config_data.get("header"))
     if config_data.get("footer"):
-        entry_footer.insert(0, config_data.get("footer"))
+        entry_footer.insert("1.0", config_data.get("footer"))
     if config_data.get("body_message"):
         entry_body.insert("1.0", config_data.get("body_message"))
     if config_data.get("company_contact"):
         entry_contact.insert("1.0", config_data.get("company_contact"))
+    if config_data.get("contact_message"):
+        entry_contact_message.insert("1.0", config_data.get("contact_message"))
     if config_data.get("receiver"):
         entry_receiver.insert(0, config_data.get("receiver"))
     if config_data.get("position"):
         entry_position.insert(0, config_data.get("position"))
+    if config_data.get("attorney"):
+        entry_attorney.insert(0, config_data.get("attorney"))
+    if config_data.get("logo_path"):
+        entry_logo_path.insert(0, config_data.get("logo_path"))
 
     return main_frame
